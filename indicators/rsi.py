@@ -6,13 +6,15 @@ import core.app_logger as app_logger
 
 logger=app_logger.get_logger(__name__)
 
-class RSI():
+from models.indicator import Indicator
+
+class RSI(Indicator):
     def __init__(self, name, period, ema):
         self.name = name
         self.period = period
         self.ema = ema
 
-    def update_RSI_values(self, frame):
+    def update_values(self, frame):
         logger.info("update_RSI_values(): Начато обновление данных RSI.")
         close_delta = frame['close'].diff()
         # Делаем две серий: одну для низких закрытий и одну для высоких закрытий
@@ -34,10 +36,13 @@ class RSI():
         logger.info("update_RSI_values(): Закончено обновление данных RSI.")
         return frame
     
-    #Функция опрделения точки выходи из сделки
-    def startegyRSI_close(self, frame):
+    # Функция опрделения точки выходи из сделки
+    # Это порно конечно т.к. RSI вспомомгательный асцилятор.
+    # TODO: Его надо с чем-то комбинировать.
+    def startegy(self, frame):
         conditions = [
             (frame[self.name] > 70),
             ((frame[self.name] < 30))]
         chois = ["Close_buy", "Close_Sell"]
         frame['close_signal'] = np.select(conditions, chois, default="NaN")
+        return frame

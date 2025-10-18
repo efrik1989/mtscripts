@@ -30,8 +30,6 @@ class RiskManager():
          risk_value = (self.equity / 100) * self.trade_risk
          return float(risk_value)
     
-    # BUG: Priority: 1 Ошибка при включении параметра '-lr 20'
-    # TypeError   can`t multiply sequence by non-int of type 'float'
     def get_lost_risk_volue(self):
          low_balance = self.equity - ((self.equity / 100) * self.lost_risk)
          return float(low_balance)
@@ -42,7 +40,7 @@ class RiskManager():
          free_margin = float(self.account_info_dict.get("margin_free"))
          risk_equity_value = self.equity - self.get_trade_risk_volue()
          if free_margin >= risk_equity_value:
-              logger.info("is_tradable(): Robot can trading. risk_equity_value: " + str(risk_equity_value))
+              logger.debug("is_tradable(): Robot can trading. risk_equity_value: " + str(risk_equity_value))
               return True
          else:
               logger.warning("is_tradable(): Robot can't trading.")
@@ -55,5 +53,4 @@ class RiskManager():
          else:
               logger.warning("is_balance_too_low(): Balances have gone beyond the risk value.")
               return False
-         
          

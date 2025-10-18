@@ -7,12 +7,13 @@ import core.app_logger as app_logger
 
 logger=app_logger.get_logger(__name__)
 
+from models.indicator import Indicator
 
 """
 timeframe - от 1 минуты до 1 месяца примеры тут https://www.mql5.com/en/docs/python_metatrader5/mt5copyratesfrom_py
 window - число значений для расчета обозначается как окно.
 """
-class MA():
+class MA(Indicator):
 
     def __init__(self, name:str, window:int):
         self.name = name
@@ -24,7 +25,7 @@ class MA():
             elif period > 0:
                  return self.frame.tail(period)
             
-    def update_MA_values(self, frame):
+    def update_values(self, frame):
         close_pos_list = frame['close']
         window_size = self.window
 
@@ -36,8 +37,8 @@ class MA():
         return frame
     
     # Стратегия подсвечивает сигналы при работе с индикатором MA50 на исторических данных
-    def strategyMA50(self, frame):
-        logger.info("strategyMA50(): start frame analis...")
+    def strategy(self, frame):
+        logger.info("strategy: start frame analis...")
         frame['diff'] = pd.to_numeric(frame['close']) - pd.to_numeric(frame[self.name])
         # TODO: Priority: 1 [general] Определение тренда хромает. Для направления сделки этого маловато. Нужно расчитать вектор, куда идет тренд.
         frame['trend'] = pd.Series(frame['diff']) > 0
@@ -78,4 +79,5 @@ class MA():
         chois = ["Open_buy", "Open_sell"]
         frame['signal'] = np.select(conditions, chois, default="NaN")
 
-        logger.info("strategyMA50(): Analis complete.")
+        logger.info("strategy: Analis complete.")
+        return frame

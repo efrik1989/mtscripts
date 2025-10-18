@@ -4,8 +4,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import MetaTrader5 as mt5
+from models.indicator import Indicator
 
-class ATR():
+class ATR(Indicator):
     def __init__(self, name, period):
         self.name = name
         self.period = period
@@ -36,6 +37,6 @@ class ATR():
         
         return df
 
-    def update_ATR_values (self, frame):
+    def update_values(self, frame):
         frame = self.calculate_atr(frame, atr_type='rma')
         return frame
