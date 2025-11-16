@@ -33,6 +33,10 @@ class Mode():
         self.order_buy = None
         self.locker = Locker()
         self.locker.is_bar_locked = False
+        self.profit = 0
+        self.efficiency = 0
+        self.orders_count = 0
+        self.profit_orders_count = 0
 
         self.lets_trade(self.symbol)
 
@@ -49,7 +53,7 @@ class Mode():
             # TODO: Возможно стоит ATR записывать в 2 отдельныйх столбца SL и TP. 
             # А затем пост обработкой все значения кроме тех где сигнал на покупку\продажу выставлять NaN. Для более простого анализа.
             signal = self.get_last_column_value(self.frame, 'signal')
-            close_signal = self.get_last_column_value(self.frame, 'signal')
+            close_signal = self.get_last_column_value(self.frame, 'close_signal')
             atr_value = float(self.get_last_column_value(self.frame, 'ATR') * 2)    
             current_price = mt5_a.get_price(self.tick_obj)
            
@@ -133,37 +137,37 @@ class Mode():
             return None
 
     @abstractmethod
-    def buy_signal_checker():
+    def buy_signal_checker(self):
         """Проверка сигнала к открытию Buy"""
 
     @abstractmethod
-    def sell_signal_checker():
+    def sell_signal_checker(self):
         """Проверка сигнала к открытию Sell"""
     
     @abstractmethod
-    def close_byu_signal_checker():
+    def close_byu_signal_checker(self):
         """Проверка закрытия сделки buy"""
 
     @abstractmethod
-    def close_sell_signal_checker():
+    def close_sell_signal_checker(self):
         """Проверка сигнала к закрытию сделки sell"""
 
     @abstractmethod
-    def sl_tp_for_buy_checker():   
+    def sl_tp_for_buy_checker(self):   
         """Проверка SLTP buy"""
     
     @abstractmethod
-    def sl_tp_for_sell_checker():
+    def sl_tp_for_sell_checker(self):
         """Проверка SLTP sell"""
     
     @abstractmethod
-    def buy_trailing_stop_checker():
+    def buy_trailing_stop_checker(self):
         """Функция Trailing stop buy"""
 
     @abstractmethod
-    def sell_trailing_stop_checker():
+    def sell_trailing_stop_checker(self):
         """Функция Trailing stop sell"""
 
     @abstractmethod
-    def signals_handler():
+    def signals_handler(self):
         """Функция Обработки сигналов"""

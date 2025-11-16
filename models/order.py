@@ -60,6 +60,7 @@ class Order():
             profit = self.open_price - current_price
         output_file.write(self.symbol + ", profit: " + str(profit) + ", " + str(time.asctime()) + "\n")
         output_file.close()
+        return profit
 
     def position_open(self, buy: bool, sell: bool):
         logger.info("Order.id = " + str(self.id))
@@ -127,3 +128,6 @@ class Order():
             # request the result as a dictionary and display it element by element
             result_dict=result._asdict()
             logger.info("Value of Stop Loss is changed. SL = " + str(result_dict.get('sl')))
+
+    def to_string(self):
+        return "" + str(self.open_price) + " " + str(self.symbol) + " " + str(self.isBuy)

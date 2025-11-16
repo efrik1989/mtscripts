@@ -19,42 +19,49 @@ class Trade_mode(Mode):
         super().__init__(symbol, indicators)
 
     def buy_signal_checker(self, symbol, current_price, signal, atr_value):
+         super().buy_signal_checker()
          if not self.is_order_open  and signal == "Open_buy":
             logger.info(str(symbol) + ": Signal to open position find: " + signal)
             if risk_manager.is_tradable():
                 order_buy = Order(current_price, symbol, atr_value)
                 order_buy.position_open(True, False)
-                frame = self.position_id_in_frame(order_buy, frame, self.is_order_open)
+                self.frame = self.position_id_in_frame(order_buy, self.frame, self.is_order_open)
                 
     def sell_signal_checker(self, symbol, current_price, signal, atr_value):
+         super().sell_signal_checker()
          if (not self.is_order_open and signal == "Open_sell") and gv.global_args.buy_sell == True:
             logger.info(str(symbol) + ": Signal to open position find: " + signal)
             if risk_manager.is_tradable():
                 order_sell = Order(current_price, symbol, atr_value)
                 order_sell.position_open(False, True)
-                frame = self.position_id_in_frame(order_sell, frame, self.is_order_open)
+                self.frame = self.position_id_in_frame(order_sell, self.frame, self.is_order_open)
                 
     def close_byu_signal_checker(self, symbol, close_signal):
+         super().close_byu_signal_checker()
          if self.is_order_open and close_signal == "Close_buy":
             logger.info(str(symbol) + ": Signal to close position find: " + close_signal)
             order_buy.position_close()
             order_buy = None
                 
     def close_sell_signal_checker(self, symbol, close_signal):
+         super().close_sell_signal_checker()
          if (self.is_order_open and close_signal == "Close_sell") and gv.global_args.buy_sell == True:
             logger.info(str(symbol) + ": Signal to close position find: " + close_signal)
             order_sell.position_close() 
             order_sell = None
 
     def buy_trailing_stop_checker(self, current_price):
+         super().buy_trailing_stop_checker()
          if type(self.order_buy) == Order and gv.global_args.trailing_stop != 0:
             self.order_buy.traling_stop(current_price, gv.global_args.trailing_stop)
 
     def sell_trailing_stop_checker(self, current_price):
+        super().sell_trailing_stop_checker()
         if type(self.order_sell) == Order and gv.global_args.trailing_stop != 0:
             self.order_sell.traling_stop(current_price, gv.global_args.trailing_stop)
 
     def signals_handler(self, symbol, current_price, signal, atr_value, close_signal):
+        super().signals_handler()
         try:      
             if not self.locker.is_bar_locked:
                 self.buy_signal_checker(symbol, current_price, signal, atr_value)
