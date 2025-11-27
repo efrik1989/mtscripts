@@ -74,6 +74,9 @@ def startRobot():
             if command == "exit":
                 logger.info("Exit from programm.")
                 break
+            elif command == "repeat":
+                # Чет мне кажется еще один поток и экземплар historic создается. Но это не точно...
+                startRobot()
             else:
                 print("Please enter correct command.")
     except Exception as e:
