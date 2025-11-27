@@ -26,13 +26,13 @@ from models.order import Order
 import core.global_vars as gv
 import core.simulation_mode as sm
 import core.trade_mode as tm
+import core.historic_mode as hm
 """
 Основная задача скрипта опрпделеять точки входа в сделку и выхода.
 На вход получаем минутный фрейм, будем подоватьт по строчно т.е. будут известны история этих данных и 
 чтобы принять решение об открытии позиции нужно подождать закрытия следующего бара.
 """
-# TODO: Priority: 1(!) [general\simulation] На данный момент будем избавляться от макарон. На сколько возможно. Т.е. рефакторинг. Дальше должно быть попроще с последующими задачами.
-# TODO: Priority: 2 [general] Необходимл отладить стратегию(ии). На данный момент можно запустить симуляцию, но это не проверка стратегии на исторических данных.
+# TODO: Priority: 1 [general] Необходимл отладить стратегию(ии). На данный момент можно запустить симуляцию, но это не проверка стратегии на исторических данных.
 # Нужен отдельный режим history (как simulation\trade), что покажет, где бы по текущей стртегии был бы вход в сделку, выход из нее и профит + расчет итогового профита.
 # TODO: Priority: 2 [general] Обложить все юнит тестами
 # TODO: Priority: 3[general/sim/history] Должна быть возможность выставить SLTP не только в значении ATR.
@@ -48,6 +48,7 @@ def monney_mode_select(symbol):
     indicators = [MA('MA50', window), RSI("RSI14", 14, True), ATR("ATR", 14)]
     if mm == "simulation": return sm.Simulation_mode(symbol, indicators)
     if mm == "trade": return tm.Trade_mode(symbol, indicators)
+    if mm == "historic": return hm.Historic_mode(symbol, indicators)
     return mm
 
 
@@ -73,6 +74,9 @@ def startRobot():
             if command == "exit":
                 logger.info("Exit from programm.")
                 break
+            elif command == "repeat":
+                # Чет мне кажется еще один поток и экземплар historic создается. Но это не точно...
+                startRobot()
             else:
                 print("Please enter correct command.")
     except Exception as e:

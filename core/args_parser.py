@@ -40,7 +40,8 @@ class Args_parser():
         parser.add_argument("-d", "--logs_directory", help="Logs store directory.", action="store", default="logs")
         parser.add_argument("-m", "--monney_mode", help="Mode of start. Posible values: \n" \
                             "simulation - trade simulation,\n" \
-                            "trade - real trade.", action="store", default="simulation")
+                            "trade - real trade.\n" \
+                            "historic - trade simulation," , action="store", default="simulation")
         args = parser.parse_args()
         args.logfile = args.logs_directory + "\\" + args.logfile
         gv.global_args = args

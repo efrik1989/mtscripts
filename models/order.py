@@ -13,12 +13,13 @@ logger=app_logger.get_logger(__name__)
 # Класс отвечающий за описание ордера
 class Order():
 
-    def __init__(self, open_price, symbol, atr_value):
+    def __init__(self, open_price, symbol, atr_value, isBuy):
         self.open_price = open_price    # Цена открытия сделки.
         self.symbol = symbol
         self.trade_obj = trade.Trade(symbol, 1.0, atr_value, atr_value)
         self.atr_value = atr_value
-        self.isBuy = None
+        self.isBuy = isBuy
+        self.direction = "buy" if self.isBuy else "sell"
         self.stop_loss = None
         self.take_profit = None
         self.id = random.randint(0, 100000)
@@ -28,27 +29,26 @@ class Order():
     def position_check(self):
         self.position_check()
 
-    # Запись в файл времени и теукщей цены
-    def fake_buy(self):
+    # Метод открытия сделки в симуляции
+    def open_fake_position(self):
         logger.info("Order.id = " + str(self.id))
-        self.isBuy = True
-        self.stop_loss = self.open_price - self.atr_value
-        self.take_profit = self.open_price + self.atr_value
+        if self.isBuy:
+            self.fake_buy()
+        else:
+            self.fake_sell()
         output_file = open(self.sim_log_path, "a")
-        output_file.write(self.symbol + ", buy: " + str(self.open_price) + ", SL: " + str(self.stop_loss) 
+        output_file.write(self.symbol + ", "+ self.direction+": " + str(self.open_price) + ", SL: " + str(self.stop_loss) 
                           + ", TP: " + str(self.take_profit) + ", " + str(time.asctime()) + "\n") 
         output_file.close()
 
+    def fake_buy(self):
+        self.stop_loss = self.open_price - self.atr_value
+        self.take_profit = self.open_price + self.atr_value
+        
     def fake_sell(self):
-        logger.info("Order.id = " + str(self.id))
-        self.isBuy = False
         self.stop_loss = self.open_price + self.atr_value
         self.take_profit = self.open_price - self.atr_value
-        output_file = open(self.sim_log_path, "a")
-        output_file.write(self.symbol + ", sell: " + str(self.open_price) + ", SL: " + str(self.stop_loss) 
-                          + ", TP: " + str(self.take_profit) + ", " + str(time.asctime()) + "\n")
-        output_file.close()
-
+    # Метод закрытия сделки в симуляции
     def fake_buy_sell_close(self, current_price):
         logger.info("Order.id = " + str(self.id))
         output_file = open(self.sim_log_path, "a")
@@ -60,12 +60,13 @@ class Order():
             profit = self.open_price - current_price
         output_file.write(self.symbol + ", profit: " + str(profit) + ", " + str(time.asctime()) + "\n")
         output_file.close()
+        return profit
 
-    def position_open(self, buy: bool, sell: bool):
+    def open_position(self):
         logger.info("Order.id = " + str(self.id))
-        self.trade_obj.position_open(buy, sell)
+        self.trade_obj.position_open(self.isBuyis, not self.isBuy)
 
-    def position_close(self):
+    def close_position(self):
         logger.info("Order.id = " + str(self.id))
         self.trade_obj.position_close()
     
@@ -95,7 +96,7 @@ class Order():
         point=mt5.symbol_info(self.symbol).point
         position = pd.DataFrame(mt5.positions_get(self.symbol))
         # Вот тут дыра конечно... т.к. список может прийти с несколькими позициями.
-        #  Чисто теоретически если будет 1 позиция на символ, то должно рабоатт корректно.
+        #  Чисто теоретически если будет 1 позиция на символ, то должно рабоать корректно.
         self.stop_loss = pd.to_numeric(position['sl'])[-1]
         if self.isBuy:
             new_value = current_price - self.atr_value
@@ -127,3 +128,6 @@ class Order():
             # request the result as a dictionary and display it element by element
             result_dict=result._asdict()
             logger.info("Value of Stop Loss is changed. SL = " + str(result_dict.get('sl')))
+
+    def to_string(self):
+        return "" + str(self.open_price) + " " + str(self.symbol) + " " + str(self.isBuy)

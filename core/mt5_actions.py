@@ -75,3 +75,8 @@ class MT5_actions():
             result = len(positions) > 0
             return result
 
+    # Получение всех тиков за период
+    def getPeriodTicks(symbol, start_period, end_period ):
+        # request AUDUSD ticks within 11.01.2020 - 11.01.2020
+        ticks = mt5.copy_ticks_range(symbol, start_period, end_period, mt5.COPY_TICKS_ALL)  
+        return ticks

@@ -37,12 +37,14 @@ class RSI(Indicator):
         return frame
     
     # Функция опрделения точки выходи из сделки
-    # Это порно конечно т.к. RSI вспомомгательный асцилятор.
+    # Это порно конечно т.к. RSI вспомомгательный осцилятор.
     # TODO: Его надо с чем-то комбинировать.
-    def startegy(self, frame):
+    def strategy(self, frame):
+        logger.info("RSI update strategy: start")
         conditions = [
             (frame[self.name] > 70),
             ((frame[self.name] < 30))]
         chois = ["Close_buy", "Close_Sell"]
         frame['close_signal'] = np.select(conditions, chois, default="NaN")
+        logger.info("RSI update strategy: done")
         return frame

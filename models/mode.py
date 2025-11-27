@@ -29,10 +29,13 @@ class Mode():
         self.tick_obj = tick.Tick(self.symbol)
         self.indicators = indicators
         self.is_order_open = mt5_a.check_order(self.symbol)
-        self.order_sell = None
-        self.order_buy = None
+        self.order = None
         self.locker = Locker()
         self.locker.is_bar_locked = False
+        self.profit = 0
+        self.efficiency = 0
+        self.orders_count = 0
+        self.profit_orders_count = 0
 
         self.lets_trade(self.symbol)
 
@@ -44,25 +47,23 @@ class Mode():
             if not risk_manager.is_equity_satisfactory():
                 raise Exception("Balance is too low!!!")
             
-            self.frame = self.update_all_frame(symbol, self.frame, self.indicators, self.is_order_open, self.locker, self.order_buy, self.order_sell, index=np.array(self.frame.index)[-1] + 1)
+            self.frame = self.update_all_frame(symbol, self.frame, self.indicators, self.is_order_open, self.locker, self.order, index=np.array(self.frame.index)[-1] + 1)
 
             # TODO: Возможно стоит ATR записывать в 2 отдельныйх столбца SL и TP. 
             # А затем пост обработкой все значения кроме тех где сигнал на покупку\продажу выставлять NaN. Для более простого анализа.
             signal = self.get_last_column_value(self.frame, 'signal')
-            close_signal = self.get_last_column_value(self.frame, 'signal')
+            close_signal = self.get_last_column_value(self.frame, 'close_signal')
             atr_value = float(self.get_last_column_value(self.frame, 'ATR') * 2)    
             current_price = mt5_a.get_price(self.tick_obj)
            
             self.signals_handler(symbol, current_price, signal, atr_value, close_signal)
 
-    def update_all_frame(self, symbol, frame, indicators, is_order_open, locker: Locker, order_buy, order_sell, index):
+    def update_all_frame(self, symbol, frame, indicators, is_order_open, locker: Locker, order, index):
         """Метод обновления фрейма."""
         last_bar_frame = mt5_a.get_last_bar(symbol, gv.global_args.timeframe, index)
         if self.is_need_update_lst_bar(symbol, frame, last_bar_frame):
             frame = self.update_frame_startegy(symbol, frame, last_bar_frame, indicators)
-            # TODO: Priority: 3 Можно оставить один если будет только order.
-            frame = self.position_id_in_frame(order_buy, frame, is_order_open)
-            frame = self.position_id_in_frame(order_sell, frame, is_order_open)
+            frame = self.position_id_in_frame(order, frame, is_order_open)
             frame.to_excel(gv.global_args.logs_directory + '\\frames\\out_' + str(symbol) + '_MA50_frame_signal_test.xlsx')
             logger.info(f"{str(symbol)}: Frames update complete. Frame in: {gv.global_args.logs_directory}\\frames\\{str(symbol)}_MA50_RSI_ATR_signals_test.xlsx to manual analis.")
             locker.is_bar_locked = False
@@ -131,39 +132,28 @@ class Mode():
         except(KeyError):
             logger.warning("Отсутствую сигналы на закрытие или открытие. Рекомендуется ожидание сигналов.")
             return None
-
-    @abstractmethod
-    def buy_signal_checker():
-        """Проверка сигнала к открытию Buy"""
-
-    @abstractmethod
-    def sell_signal_checker():
-        """Проверка сигнала к открытию Sell"""
+        
+    def close_position_by_sltp(self, symbol, current_price):
+        logger.info(str(symbol) + ": Signal to close position find: SLTP")
+        self.profit += self.order.fake_buy_sell_close(current_price)
+        self.order = None
     
     @abstractmethod
-    def close_byu_signal_checker():
-        """Проверка закрытия сделки buy"""
+    def close_position_signal_checker(self):
+        """Проверка закрытия сделки """
 
     @abstractmethod
-    def close_sell_signal_checker():
-        """Проверка сигнала к закрытию сделки sell"""
-
-    @abstractmethod
-    def sl_tp_for_buy_checker():   
-        """Проверка SLTP buy"""
+    def sl_tp_checker(self):   
+        """Проверка SLTP"""
     
     @abstractmethod
-    def sl_tp_for_sell_checker():
-        """Проверка SLTP sell"""
-    
-    @abstractmethod
-    def buy_trailing_stop_checker():
-        """Функция Trailing stop buy"""
+    def trailing_stop_checker(self):
+        """Функция Trailing stop"""
 
     @abstractmethod
-    def sell_trailing_stop_checker():
-        """Функция Trailing stop sell"""
-
-    @abstractmethod
-    def signals_handler():
+    def signals_handler(self):
         """Функция Обработки сигналов"""
+    
+    @abstractmethod
+    def open_position_signal_checker(self):
+        """Функция Обработки сигнала на открытие сделки"""
