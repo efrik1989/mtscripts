@@ -1,10 +1,13 @@
+import random
 from rich.progress import track
-import time
+import os
 import numpy as np
 import pandas as pd
+import queue
 from pandas.plotting import register_matplotlib_converters
 from core import risk_manager
 from models.order import Order
+import core.queue_handler as queue
 
 register_matplotlib_converters()
 
@@ -43,28 +46,38 @@ class Historic_mode(Mode):
             self.order = None
     
     # Проверка SLTP buy
-    def sl_tp_checker(self, symbol, index):
-        super().sl_tp_checker()   
+    def sl_tp_checker(self, symbol, frame,  index):
+        super().sl_tp_checker()
         if (type(self.order) == Order):
-            for row, index in enumerate(self.get_price_from_ticks(index)):
-                current_price = float(row['bid'])
-                if self.order.isBuy:
-                    if (current_price >= self.order.take_profit or current_price <= self.order.stop_loss ):
-                        self.close_position_by_sltp(symbol, current_price)
-                        return
-                else:
-                    if (current_price <= self.order.take_profit or current_price >= self.order.stop_loss ):
-                        self.close_position_by_sltp(symbol, current_price)
-                        return
-
-    # TODO: Пока не уверен стоит ли делать обработку trailing stop в режими истории
-    # Во всяком случае пока т.к. это подразумевает, что нужно будет подгружать тики кажджого бара.
-    # Этот процесс может очень сильно затянуть процесс проверки стратегии. 
+            logger.debug("Order to close by SLTP: " + str(self.order.id) + "SLTP: " + str(self.order.take_profit) + " " + str(self.order.stop_loss))
+            isSL = frame['low'] <= self.order.stop_loss and frame['high'] >= self.order.stop_loss
+            isTP = frame['low'] <= self.order.take_profit and frame['high'] >= self.order.take_profit
+            logger.debug("Order to close by SLTP: " + str(self.order.id) + " В диапазлне: " + str(isTP) + " " + str(isSL))
+            if (isTP or isSL):
+                ticks_frame = pd.DataFrame(self.get_price_from_ticks(index))
+                logger.debug("Order to close by SLTP: " + str(self.order.id) + "Количество тиков: " + str(len(ticks_frame)))
+                for index, row in enumerate(range(len(np.array(ticks_frame)))):
+                    current_price = float(ticks_frame['bid'].iloc[index])
+                    if self.order.isBuy:
+                        if (current_price >= self.order.take_profit or current_price <= self.order.stop_loss ):
+                            self.close_position_by_sltp(symbol, current_price)
+                            return
+                    else:
+                        if (current_price <= self.order.take_profit or current_price >= self.order.stop_loss ):
+                            self.close_position_by_sltp(symbol, current_price)
+                            return
+                
     # Функция Trailing stop buy
-    def trailing_stop_checker(self, current_price):
+    def trailing_stop_checker(self, frame, index):
         super().trailing_stop_checker()
         if type(self.order) == Order and gv.global_args.trailing_stop != 0:
-            self.order.fake_traling_stop(current_price, gv.global_args.trailing_stop)
+            # TODO: Как-будто кусок кода можно вынести в отдельую функцию...
+            ticks_frame = pd.DataFrame(self.get_price_from_ticks(index))
+            logger.debug("Order to change SL: " + str(self.order.id) + "Количество тиков: " + str(self.order.stop_loss))
+            for index, row in enumerate(range(len(np.array(ticks_frame)))):
+                current_price = float(ticks_frame['bid'].iloc[index])
+                # Кусок кода ниже можно передавать как аргумемнт...
+                self.order.fake_traling_stop(current_price, gv.global_args.trailing_stop)
 
     def signals_handler(self, symbol, signal, atr_value, close_signal, frame, index):
         super().signals_handler()
@@ -72,11 +85,11 @@ class Historic_mode(Mode):
         try:      
             self.open_position_signal_checker(symbol, frame['close'], signal, atr_value)
 
+            self.trailing_stop_checker(frame, index)
+
+            self.sl_tp_checker(symbol, frame, index)
+            
             self.close_position_signal_checker(symbol, frame['close'], close_signal)
-
-            self.sl_tp_checker(symbol, index)
-
-            # self.trailing_stop_checker()
 
         except(UnboundLocalError):
             logger.exception(str(symbol) + ": lets_trade(): Переменная или объект не в том месте.!!!")
@@ -86,13 +99,9 @@ class Historic_mode(Mode):
 
     def lets_trade(self, symbol):
         """Метод с основной логикой купли продажи по сигналам."""
-        # TODO: Priority: 1 Этот метод надо переопределить.
-        # Основная идея в том, что вмемсто обновления на следующий бар нужно проверить все имеющиеся бары.
-        # Т.е. нужен перебор по строкам и скачивание тиков для текущего или следующего бара. Проработать надо.
-        # На данный момент только тики текущего бара(!!!) 
         
         self.frame = self.update_all_frame(symbol, self.frame, self.indicators, self.is_order_open, self.locker, self.order, index=np.array(self.frame.index)[-1] + 1)
-        for index in track(range(len(np.array(self.frame['low'])) - 1), description="Processing..."):
+        for index in track(range(len(np.array(self.frame['low'])) - 1), description=symbol + ": Processing..."):
             
             frame = self.getRowByindex(self.frame, index)
             
@@ -100,37 +109,22 @@ class Historic_mode(Mode):
             # А затем пост обработкой все значения кроме тех где сигнал на покупку\продажу выставлять NaN. Для более простого анализа.
             signal = frame['signal']
             close_signal = frame['close_signal']
-            atr_value = float(frame['ATR'] * 2)  
+            atr_value = float(frame['ATR'] * 4)
            
             self.signals_handler(symbol, signal, atr_value, close_signal, frame, index)
 
-        self.close_open_positions(frame['close'], symbol)
-
-        output_file = open(gv.global_args.logs_directory + "\\" + gv.global_args.monney_mode + "\\analis_result.txt", "w")
-        output_file.write(symbol + "\n" \
-                            "Количество сделок: " + str(self.orders_count) + "\n" \
-                            "Доход со сделок: " + str(self.get_profit_sum()) + "\n" \
-                            "Количество прибыльных сделок: " + str(self.profit_orders_count) + "\n" \
-                            "Эффективность стратегии: " + str(self.get_efficiency()) + "\n") 
-        output_file.close()
-        print("Processing finished.")
-        exit(0)
-
-    # TODO: Не совсем прпедставляю себе поведение работы с этим
-    # Т.е. у нас щелкнул сигнал. У нас и так понятна цена открытия...
-    # Тоже самое с закрытием... 
-    # А вот SLTP вероятно да т.к. при работе с frame на исторических данных текущая цена не доступна (!!!)
-    # Трэйлинг стоп тоже да (!!!)  
+        self.set_finish_resume(symbol, frame)
+    
     def get_price_from_ticks(self, current_bar_index):
         current_bar = self.getRowByindex(self.frame, current_bar_index)
         next_bar = self.getRowByindex(self.frame, current_bar_index + 1)
-        ticks = mt5_a.getPeriodTicks(self.symbol, current_bar['time'], next_bar['time'])
+        ticks = mt5_a.getPeriodTicks(self.symbol, int(current_bar['time']), int(next_bar['time']))
         return pd.DataFrame(ticks)
     
     def check_order_profit(self, profit):
-        if (profit > 0):
-            self.profit_orders_count += 1
         if profit != None:
+            if (profit > 0):
+                self.profit_orders_count += 1
             self.profit += profit
     
     def get_profit_sum(self):
@@ -150,3 +144,29 @@ class Historic_mode(Mode):
             last_position_profit = self.order.fake_buy_sell_close(current_price)
         self.check_order_profit(last_position_profit)
         logger.info(str(symbol) + ": Signal to close positions. profit: " + str(last_position_profit))
+
+    # TODO: Анализ результатов надо загружать в файл excell
+    # Т.е. в объект pd.Dataframe нужно собрать данные со всех потоков и запихать в excell.
+    # Пу-пу-пу...  
+    def set_finish_resume(self, symbol, frame):
+        file_name = "analis_result.txt"
+
+        self.close_open_positions(frame['close'], symbol)
+        """
+        output_file = open(gv.global_args.logs_directory + "\\" + gv.global_args.monney_mode + "\\" + file_name, "a")
+        output_file.write(symbol + "\n" \
+                            "Количество сделок: " + str(self.orders_count) + "\n" \
+                            "Доход со сделок: " + str(self.get_profit_sum()) + "\n" \
+                            "Количество прибыльных сделок: " + str(self.profit_orders_count) + "\n" \
+                            "Эффективность стратегии: " + str(self.get_efficiency()) + "\n") 
+        output_file.close()
+        """
+        data = {'symbol' : symbol, \
+                'deals_count' : self.orders_count, \
+                'profit' : self.get_profit_sum(), \
+                'profit_deals' : self.profit_orders_count, \
+                'efficiency' : self.get_efficiency()}
+        
+        queue.set_data_to_queue(data)
+        print("Processing finished.")
+        exit(0)

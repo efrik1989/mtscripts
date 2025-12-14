@@ -53,7 +53,7 @@ class Mode():
             # А затем пост обработкой все значения кроме тех где сигнал на покупку\продажу выставлять NaN. Для более простого анализа.
             signal = self.get_last_column_value(self.frame, 'signal')
             close_signal = self.get_last_column_value(self.frame, 'close_signal')
-            atr_value = float(self.get_last_column_value(self.frame, 'ATR') * 2)    
+            atr_value = float(self.get_last_column_value(self.frame, 'ATR') * 4)    
             current_price = mt5_a.get_price(self.tick_obj)
            
             self.signals_handler(symbol, current_price, signal, atr_value, close_signal)
