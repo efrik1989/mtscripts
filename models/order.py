@@ -37,7 +37,7 @@ class Order():
         else:
             self.fake_sell()
         output_file = open(self.sim_log_path, "a")
-        output_file.write(self.symbol + ", "+ self.direction+": " + str(self.open_price) + ", SL: " + str(self.stop_loss) 
+        output_file.write(self.symbol + ", Order.id = " + str(self.id) + ", " + self.direction+": " + str(self.open_price) + ", SL: " + str(self.stop_loss) 
                           + ", TP: " + str(self.take_profit) + ", " + str(time.asctime()) + "\n") 
         output_file.close()
 
@@ -52,13 +52,13 @@ class Order():
     def fake_buy_sell_close(self, current_price):
         logger.info("Order.id = " + str(self.id))
         output_file = open(self.sim_log_path, "a")
-        output_file.write(self.symbol + ", close_position: " + str(current_price) + ", " + str(time.asctime()) + "\n")
+        output_file.write(self.symbol + ", Order.id = " + str(self.id) + ", close_position: " + str(current_price) + ", " + str(time.asctime()) + "\n")
         profit = None
         if self.isBuy==True:
             profit = current_price - self.open_price    
         elif self.isBuy==False:
             profit = self.open_price - current_price
-        output_file.write(self.symbol + ", profit: " + str(profit) + ", " + str(time.asctime()) + "\n")
+        output_file.write(self.symbol + ", Order.id = " + str(self.id) + ", profit: " + str(profit) + ", " + str(time.asctime()) + "\n")
         output_file.close()
         return profit
 

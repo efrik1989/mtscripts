@@ -3,7 +3,7 @@ pandas
 pytest
 coverage
 pytest-cov
-MetaTrader5=
+MetaTrader5
 abstractEasyT
 supportLibEasyT
 metatrader5EasyT
