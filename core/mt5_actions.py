@@ -6,13 +6,7 @@ import numpy as np
 
 register_matplotlib_converters()
 import MetaTrader5 as mt5
-from metatrader5EasyT import tick
-from indicators.ma import MA
-from indicators.rsi import RSI
-from indicators.atr import ATR
-from models.order import Order
 from models.timframe_enum import Timeframe
-from core.risk_manager import RiskManager
 import core.app_logger as app_logger
 
 logger = app_logger.get_logger(__name__)
@@ -78,5 +72,6 @@ class MT5_actions():
     # Получение всех тиков за период
     def getPeriodTicks(symbol, start_period, end_period ):
         # request AUDUSD ticks within 11.01.2020 - 11.01.2020
-        ticks = mt5.copy_ticks_range(symbol, start_period, end_period, mt5.COPY_TICKS_ALL)  
+        # BUG: По какой-то причине ticks оказывается пустым... Разбираемся.
+        ticks = mt5.copy_ticks_range(symbol, start_period, end_period, mt5.COPY_TICKS_INFO)  
         return ticks

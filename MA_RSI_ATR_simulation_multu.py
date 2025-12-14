@@ -23,6 +23,7 @@ from indicators.atr import ATR
 
 from models.order import Order
 
+import core.queue_handler as queue
 import core.global_vars as gv
 import core.simulation_mode as sm
 import core.trade_mode as tm
@@ -51,20 +52,26 @@ def monney_mode_select(symbol):
     if mm == "historic": return hm.Historic_mode(symbol, indicators)
     return mm
 
+def historic_analis_writer(producers):
+    for t in producers:
+            t.join()
 
-def startRobot():
-    mt5_a.init_MT5()
-    mt5_a.authorization(args.account, args.password)
+    frame = queue.set_data_to_frame()
+    frame.to_excel(gv.global_args.logs_directory + "\\historic\\Analis_Result_" \
+                       + gv.global_args.timeframe + "_Buy_Sell=" + str(gv.global_args.buy_sell) + \
+                        "_TrailingStop=" + str(gv.global_args.trailing_stop) + ".xlsx")
     
+def symbols_workers_start(producers):
     if len(args.symbols) != 0:
         logger.debug("Symbols lenght: " + str(len(args.symbols)))
         for symbol in args.symbols:
             logger.info(str(symbol) + ": start()")
             thread=threading.Thread(target=monney_mode_select, args=(symbol,), daemon=True)
             thread.start()
-    # TODO: Priority: 2 [general] Добавить "Уровень риска". Процент от общего счета который может использовать робот. 
-    # TODO: Priority: 1 [general] И предохранитель, если баланс опустил на n-% от максимального кидаем ошибку и останавливаемся.
-    # Или например нет больше денег на болансе и сделку совершить не возможно.
+            producers.append(thread)
+    return producers
+
+def commands_handler():
     print("Posible commands:")
     print("exit - exit from programm")
     print("Please enter command:")
@@ -74,13 +81,26 @@ def startRobot():
             if command == "exit":
                 logger.info("Exit from programm.")
                 break
-            elif command == "repeat":
-                # Чет мне кажется еще один поток и экземплар historic создается. Но это не точно...
-                startRobot()
             else:
                 print("Please enter correct command.")
     except Exception as e:
         logger.warning("Ошибка при работе с вводом! Экстренное завершение программы.")    
+
+def startRobot():
+    mt5_a.init_MT5()
+    mt5_a.authorization(args.account, args.password)
+    
+    producers = []
+    symbols_workers_start(producers)
+
+    # TODO: Priority: 2 [general] Добавить "Уровень риска". Процент от общего счета который может использовать робот. 
+    # TODO: Priority: 1 [general] И предохранитель, если баланс опустил на n-% от максимального кидаем ошибку и останавливаемся.
+    # Или например нет больше денег на болансе и сделку совершить невозможно.
+    if gv.global_args.monney_mode == "historic":
+        historic_analis_writer(producers)
+        return
+
+    commands_handler()
 
 startRobot()
 # shut down connection to MetaTrader 5

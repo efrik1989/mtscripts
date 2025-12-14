@@ -27,7 +27,10 @@ def get_rotate_handler(filename):
     return rotate_handler
 
 def get_logger(name):
-    log_filename = gv.global_args.logfile
+    if gv.global_args != None:
+        log_filename = gv.global_args.logfile
+    else:
+        log_filename = "test.txt"
     logger = logging.getLogger(name)
     logger.setLevel(logging.INFO)
     logger.addHandler(get_file_handler(log_filename))

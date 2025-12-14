@@ -17,15 +17,15 @@ import core.global_vars as gv
 class Trade_mode(Mode):
     def __init__(self, symbol, indicators):
         super().__init__(symbol, indicators)
-
-    # TODO: Тоже нужно заменить order_buy и order_sell на oreder.
+    
+    # Открытие позиции
     def open_position_signal_checker(self, symbol, current_price, signal, atr_value):
         super().open_position_signal_checker()
         if type(self.order) != Order:
             if (signal == "Open_buy" or (gv.global_args.buy_sell == True and signal == "Open_sell")):
                 logger.info(str(symbol) + ": Signal to open position find: " + signal)
                 if risk_manager.is_tradable():
-                    logger.info(str(symbol) + ": Signal to open position find: " + signal)
+                    logger.info("Risk manager checker: Ok.")
                     self.order = Order(current_price, symbol, atr_value, isbuy= True if signal == "Open_buy" else False)
                     self.order.open_position()
                     self.locker.is_bar_locked = True
