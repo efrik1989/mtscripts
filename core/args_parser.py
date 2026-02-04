@@ -30,7 +30,7 @@ class Args_parser():
             " D1 - 1 day,\n" \
             " W 1 weak,\n" \
             " MN = 1 month", action="store", default="H4")
-        parser.add_argument("-i", "--indicators", help="List of indicators.", action="store_true") # TODO: Под вопросом. Думаю надо... Пока только думаю.
+        parser.add_argument("-str", "--strategy", help="Strategy name. Available: BB_RSI, MA_50_RSI.", action="store", default="BB_RSI")
         parser.add_argument("-a", "--account", help="Account number in Finam.", action="store_true", default=23677)
         parser.add_argument("-p", "--password", help="Account password number in Finam.", action="store_true", default="3C$ap3%H")
         parser.add_argument("-mm", "--monney_manager", help="Percentage of the total balance that will be involved in trading.", action="store", default=100)

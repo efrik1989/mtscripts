@@ -1,10 +1,8 @@
-from datetime import datetime, timedelta
-import logging
-import matplotlib.pyplot as plt
-import numpy as np
 import pandas as pd
-import MetaTrader5 as mt5
 from models.indicator import Indicator
+import core.app_logger as app_logger
+
+logger=app_logger.get_logger(__name__)
 
 class ATR(Indicator):
     def __init__(self, name, period):
@@ -38,5 +36,6 @@ class ATR(Indicator):
         return df
 
     def update_values(self, frame):
+        logger.info("MA Начато обновление данных.")
         frame = self.calculate_atr(frame, atr_type='rma')
         return frame

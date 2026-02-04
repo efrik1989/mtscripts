@@ -16,8 +16,8 @@ import core.global_vars as gv
 # Для полноценной проверки стратегии в этом режиме, может занять много времени.
 class Simulation_mode(Mode):
     # Передаваемые параметры снаружи symbol, indicators, 
-    def __init__(self, symbol, indicators):
-        super().__init__(symbol, indicators)
+    def __init__(self, symbol, strategy):
+        super().__init__(symbol, strategy)
     
     # Проверка сигнала к открытию Buy
     def open_position_signal_checker(self, symbol, current_price, signal, atr_value):

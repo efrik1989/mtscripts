@@ -15,7 +15,7 @@ class RSI(Indicator):
         self.ema = ema
 
     def update_values(self, frame):
-        logger.info("update_RSI_values(): Начато обновление данных RSI.")
+        logger.info("RSI Начато обновление данных.")
         close_delta = frame['close'].diff()
         # Делаем две серий: одну для низких закрытий и одну для высоких закрытий
         up = close_delta.clip(lower=0)
@@ -36,15 +36,3 @@ class RSI(Indicator):
         logger.info("update_RSI_values(): Закончено обновление данных RSI.")
         return frame
     
-    # Функция опрделения точки выходи из сделки
-    # Это порно конечно т.к. RSI вспомомгательный осцилятор.
-    # TODO: Его надо с чем-то комбинировать.
-    def strategy(self, frame):
-        logger.info("RSI update strategy: start")
-        conditions = [
-            (frame[self.name] > 70),
-            ((frame[self.name] < 30))]
-        chois = ["Close_buy", "Close_Sell"]
-        frame['close_signal'] = np.select(conditions, chois, default="NaN")
-        logger.info("RSI update strategy: done")
-        return frame

@@ -20,14 +20,18 @@ from metatrader5EasyT import tick
 from indicators.ma import MA
 from indicators.rsi import RSI
 from indicators.atr import ATR
+from indicators.bollinger_bands import Bollinger
+from strategies.str_bollingers_band import Strategy_BB as BB
+from models.strategy_enum import Strategy
+
 
 from models.order import Order
 
 import core.queue_handler as queue
 import core.global_vars as gv
-import core.simulation_mode as sm
-import core.trade_mode as tm
-import core.historic_mode as hm
+import core.modes.simulation_mode as sm
+import core.modes.trade_mode as tm
+import core.modes.historic_mode as hm
 """
 Основная задача скрипта опрпделеять точки входа в сделку и выхода.
 На вход получаем минутный фрейм, будем подоватьт по строчно т.е. будут известны история этих данных и 
@@ -40,16 +44,18 @@ import core.historic_mode as hm
 # TODO: Пока выносить параметры, что стоит указывать в аргументах при запуске, а не хардкодить.
 # TODO: Сделать возможность выставлять только SL или TP
 # Период для индикаторов
-window = 50
+# window = 50
 
 
 # Функция определения режима
-def monney_mode_select(symbol):
+def monney_mode_select(symbol, strategy):
     mm = gv.global_args.monney_mode
-    indicators = [MA('MA50', window), RSI("RSI14", 14, True), ATR("ATR", 14)]
-    if mm == "simulation": return sm.Simulation_mode(symbol, indicators)
-    if mm == "trade": return tm.Trade_mode(symbol, indicators)
-    if mm == "historic": return hm.Historic_mode(symbol, indicators)
+    # strategy = BB(20)
+    # indicators = [Bollinger('BB', 20), RSI("RSI14", 14, True), ATR("ATR", 14)]
+    # indicators = [MA('MA50', window), RSI("RSI14", 14, True), ATR("ATR", 14)]
+    if mm == "simulation": return sm.Simulation_mode(symbol, strategy)
+    if mm == "trade": return tm.Trade_mode(symbol, strategy)
+    if mm == "historic": return hm.Historic_mode(symbol, strategy)
     return mm
 
 def historic_analis_writer(producers):
@@ -66,7 +72,7 @@ def symbols_workers_start(producers):
         logger.debug("Symbols lenght: " + str(len(args.symbols)))
         for symbol in args.symbols:
             logger.info(str(symbol) + ": start()")
-            thread=threading.Thread(target=monney_mode_select, args=(symbol,), daemon=True)
+            thread=threading.Thread(target=monney_mode_select, args=(symbol, Strategy[gv.global_args.strategy].value,), daemon=True)
             thread.start()
             producers.append(thread)
     return producers
@@ -91,13 +97,14 @@ def startRobot():
     mt5_a.authorization(args.account, args.password)
     
     producers = []
-    symbols_workers_start(producers)
+    producers = symbols_workers_start(producers)
 
     # TODO: Priority: 2 [general] Добавить "Уровень риска". Процент от общего счета который может использовать робот. 
     # TODO: Priority: 1 [general] И предохранитель, если баланс опустил на n-% от максимального кидаем ошибку и останавливаемся.
     # Или например нет больше денег на болансе и сделку совершить невозможно.
     if gv.global_args.monney_mode == "historic":
         historic_analis_writer(producers)
+        print("The End")
         return
 
     commands_handler()
