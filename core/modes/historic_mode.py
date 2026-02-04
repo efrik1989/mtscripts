@@ -20,8 +20,8 @@ from models.mode import Mode
 import core.global_vars as gv
 
 class Historic_mode(Mode):
-    def __init__(self, symbol, indicators):
-        super().__init__(symbol, indicators)
+    def __init__(self, symbol, strategy):
+        super().__init__(symbol, strategy)
 
      # Проверка сигнала к открытию
     def open_position_signal_checker(self, symbol, current_price, signal, atr_value):
@@ -36,9 +36,9 @@ class Historic_mode(Mode):
                 self.frame = self.position_id_in_frame(self.order, self.frame, self.is_order_open)
 
     # Проверка сигнала закрытия сделки
-    def close_position_signal_checker(self, symbol, current_price, close_signal):
+    def close_position_signal_checker(self, symbol, current_price, signal, close_signal):
         super().close_position_signal_checker()
-        if type(self.order) == Order and (close_signal == "Close_buy" or (gv.global_args.buy_sell == True and close_signal == "Close_sell")):
+        if type(self.order) == Order and signal=="NaN" and (close_signal == "Close_buy" or (gv.global_args.buy_sell == True and close_signal == "Close_sell")):
             last_position_profit = self.order.fake_buy_sell_close(current_price)
             self.check_order_profit(last_position_profit)
             self.profit += last_position_profit
@@ -89,7 +89,7 @@ class Historic_mode(Mode):
 
             self.sl_tp_checker(symbol, frame, index)
             
-            self.close_position_signal_checker(symbol, frame['close'], close_signal)
+            self.close_position_signal_checker(symbol, frame['close'], signal, close_signal)
 
         except(UnboundLocalError):
             logger.exception(str(symbol) + ": lets_trade(): Переменная или объект не в том месте.!!!")
@@ -100,7 +100,7 @@ class Historic_mode(Mode):
     def lets_trade(self, symbol):
         """Метод с основной логикой купли продажи по сигналам."""
         
-        self.frame = self.update_all_frame(symbol, self.frame, self.indicators, self.is_order_open, self.locker, self.order, index=np.array(self.frame.index)[-1] + 1)
+        self.frame = self.update_all_frame(symbol, self.frame, self.strategy, self.is_order_open, self.locker, self.order, index=np.array(self.frame.index)[-1] + 1)
         for index in track(range(len(np.array(self.frame['low'])) - 1), description=symbol + ": Processing..."):
             
             frame = self.getRowByindex(self.frame, index)
@@ -149,7 +149,7 @@ class Historic_mode(Mode):
     # Т.е. в объект pd.Dataframe нужно собрать данные со всех потоков и запихать в excell.
     # Пу-пу-пу...  
     def set_finish_resume(self, symbol, frame):
-        file_name = "analis_result.txt"
+        # file_name = "analis_result.txt"
 
         self.close_open_positions(frame['close'], symbol)
         """

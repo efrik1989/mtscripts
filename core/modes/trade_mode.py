@@ -15,8 +15,8 @@ from models.mode import Mode
 import core.global_vars as gv
 
 class Trade_mode(Mode):
-    def __init__(self, symbol, indicators):
-        super().__init__(symbol, indicators)
+    def __init__(self, symbol, strategy):
+        super().__init__(symbol, strategy)
     
     # Открытие позиции
     def open_position_signal_checker(self, symbol, current_price, signal, atr_value):
