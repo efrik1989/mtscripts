@@ -1,11 +1,8 @@
-import random
 from rich.progress import track
-import os
 import numpy as np
 import pandas as pd
 import queue
 from pandas.plotting import register_matplotlib_converters
-from core import risk_manager
 from models.order import Order
 import core.queue_handler as queue
 

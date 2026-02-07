@@ -11,8 +11,10 @@ class Args_parser():
         parser = argparse.ArgumentParser()
         # Символы по умолчанию: "LKOH", "TATN", "SBER", "MAGN", "VTBR", "NLMK", "CHMF", "X5", "MGNT", "YDEX", "OZON"
         parser.add_argument("-s", "--symbols", help="List of instrument symbols. Enter like a strings list(Example: 'LKOH' 'TATN')\n" \
-        " Default: 'LKOH', 'TATN', 'SBER', 'MAGN', 'VTBR', 'NLMK', 'CHMF', 'X5', 'MGNT', 'YDEX', 'OZON'", nargs="+", action="store", default=["LKOH", "TATN", "SBER", "MAGN", "VTBR", "NLMK", "CHMF", "X5", "MGNT", "YDEX", "OZON"] )
+        " Default: 'LKOH', 'TATN', 'SBER', 'MAGN', 'VTBR', 'NLMK', 'CHMF', 'X5', 'MGNT', 'YDEX', 'OZON'", nargs="+", action="store", default=["LKOH"] )
+        parser.add_argument("-d", "--logs_directory", help="Logs store directory.", action="store", default="logs")
         parser.add_argument("-l", "--logfile", help="Logfile path. Default: '.\\logs\\everything.log'", action="store", default="everything.log")
+        parser.add_argument("-ll", "--loglevel", help="Example: DEBUG, INFO, WARNING, ERROR, CRIT.", action="store", default="INFO")
         parser.add_argument("-r", "--range", type=int, help="Range of bar at first analis.", action="store", default=100)
         parser.add_argument("-t", "--timeframe", help="Timeframe of instrument grafic. Default: 'M5' (5 minuts).\n" \
             " Posible values:\n" \
@@ -37,7 +39,6 @@ class Args_parser():
         parser.add_argument("-lr", "--lost_risk", help="Percentage of total balance that is allowed to be lost.", action="store", default=100)
         parser.add_argument("-ts", "--trailing_stop", type=int, help="Price indent from Stop Loss.", action="store", default=0)
         parser.add_argument("-bs", "--buy_sell", help="Type of deals. True - buy and sell, False - only buy. Example: -bs (it's True value).", action="store_true", default=False)
-        parser.add_argument("-d", "--logs_directory", help="Logs store directory.", action="store", default="logs")
         parser.add_argument("-m", "--monney_mode", help="Mode of start. Posible values: \n" \
                             "simulation - trade simulation,\n" \
                             "trade - real trade.\n" \
@@ -55,6 +56,7 @@ class Args_parser():
         print(args.monney_mode)
         print("Используется аккаунт")
         print(args.account)
+        print(f"Уровень логирования: {gv.global_args.loglevel}")
         print("Файл логов")
         print(gv.global_args.logfile)
         self.create_dirs_if_not_exist(args.logs_directory + "\\" + args.monney_mode)

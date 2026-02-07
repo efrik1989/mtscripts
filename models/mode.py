@@ -16,7 +16,6 @@ logger=app_logger.get_logger(__name__)
 import core.global_vars as gv
 
 import core.risk_manager as risk_m
-risk_manager = risk_m.RiskManager(gv.global_args.monney_manager, gv.global_args.lost_risk)
 
 # Абстрактный класс родитель для режимов запуска.
 class Mode():
@@ -27,7 +26,6 @@ class Mode():
         mt5_a.selectSymbol(self.symbol)
         self.frame = mt5_a.get_rates_frame(self.symbol, 2, gv.global_args.range, gv.global_args.timeframe)
         
-        #TODO: RiskManager не должен создаваться для каждого инструмента он единый должен быть...
         self.tick_obj = tick.Tick(self.symbol)
         self.strategy = strategy
         self.is_order_open = mt5_a.check_order(self.symbol)
@@ -38,25 +36,41 @@ class Mode():
         self.efficiency = 0
         self.orders_count = 0
         self.profit_orders_count = 0
+        #TODO: RiskManager не должен создаваться для каждого инструмента он единый должен быть...
+        self.risk_manager = risk_m.RiskManager(gv.global_args.monney_manager, gv.global_args.lost_risk)
 
         self.lets_trade(self.symbol)
+
+    # Ограничитель в 5000 строк для DataFrame, для сбоерегания ресурсов
+    def check_frame_len(self, frame: pd.DataFrame):
+        if len(frame) > 5000:
+            frame = frame.tail(5000)
+            logger.info("Фрэйм обрезан до 5000 строк с конца.")
+        return frame
 
     # Основная функция с логикой торговли
     def lets_trade(self, symbol):
         """Метод с основной логикой купли продажи по сигналам."""
+        
         while True:
             time.sleep(1)
-            if not risk_manager.is_equity_satisfactory():
-                raise Exception("Balance is too low!!!")
+            # Проверяем флаг ПЕРЕД любыми действиями (очень быстро)
+            if not self.risk_manager.trading_allowed.is_set():
+                logger.critical(f"Поток {symbol}: Торговля заблокирована риск-менеджером.")
+                time.sleep(1)
+                continue
             
             self.frame = self.update_all_frame(symbol, self.frame, self.strategy, self.is_order_open, self.locker, self.order, index=np.array(self.frame.index)[-1] + 1)
-
+            
             # TODO: Возможно стоит ATR записывать в 2 отдельныйх столбца SL и TP. 
             # А затем пост обработкой все значения кроме тех где сигнал на покупку\продажу выставлять NaN. Для более простого анализа.
             signal = self.get_last_column_value(self.frame, 'signal')
             close_signal = self.get_last_column_value(self.frame, 'close_signal')
             atr_value = float(self.get_last_column_value(self.frame, 'ATR') * 4)    
             current_price = mt5_a.get_price(self.tick_obj)
+            # Отладочный 
+            # signal = "Open_buy"
+            logger.debug(f"Signal: {signal}, Close_signal: {close_signal}, ATR: {atr_value}, Current price: {current_price}")
            
             self.signals_handler(symbol, current_price, signal, atr_value, close_signal)
 
@@ -65,11 +79,12 @@ class Mode():
         last_bar_frame = mt5_a.get_last_bar(symbol, gv.global_args.timeframe, index)
         if self.is_need_update_lst_bar(symbol, frame, last_bar_frame):
             frame = self.update_frame_startegy(symbol, frame, last_bar_frame, strategy)
-            frame = self.position_id_in_frame(order, frame, is_order_open)
-            frame.to_excel(gv.global_args.logs_directory + '\\frames\\out_' + str(symbol) + '_MA50_frame_signal_test.xlsx')
-            logger.info(f"{str(symbol)}: Frames update complete. Frame in: {gv.global_args.logs_directory}\\frames\\{str(symbol)}_MA50_RSI_ATR_signals_test.xlsx to manual analis.")
+            # TODO: До делать метод  а то получается он сейчас не делает ничего...
+            # frame = self.position_id_in_frame(order, frame, is_order_open)
+            frame.to_excel(f"{gv.global_args.logs_directory}\\frames\\out_{symbol}_{gv.global_args.strategy}_frame_signal_test.xlsx")
+            logger.info(f"{str(symbol)}: Frames update complete. Frame in: {gv.global_args.logs_directory}\\frames\\out_{symbol}_{gv.global_args.strategy}_frame_signal_test.xlsx to manual analis.")
             locker.is_bar_locked = False
-            return frame
+            return self.check_frame_len(frame)
         return frame
         
         # Проверка нужно ли обновление фрэйма
@@ -143,20 +158,20 @@ class Mode():
     
     @abstractmethod
     def close_position_signal_checker(self):
-        """Проверка закрытия сделки """
+        logger.debug("Проверка закрытия сделки ")
 
     @abstractmethod
     def sl_tp_checker(self):   
-        """Проверка SLTP"""
+        logger.debug("Проверка SLTP")
     
     @abstractmethod
     def trailing_stop_checker(self):
-        """Функция Trailing stop"""
+        logger.debug("Функция Trailing stop")
 
     @abstractmethod
     def signals_handler(self):
-        """Функция Обработки сигналов"""
+        logger.debug("Функция Обработки сигналов")
     
     @abstractmethod
     def open_position_signal_checker(self):
-        """Функция Обработки сигнала на открытие сделки"""
+        logger.debug("Функция Обработки сигнала на открытие сделки")
