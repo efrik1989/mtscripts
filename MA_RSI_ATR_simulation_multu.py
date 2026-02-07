@@ -15,17 +15,7 @@ logger=app_logger.get_logger(__name__)
 
 
 import MetaTrader5 as mt5
-from metatrader5EasyT import tick
-
-from indicators.ma import MA
-from indicators.rsi import RSI
-from indicators.atr import ATR
-from indicators.bollinger_bands import Bollinger
-from strategies.str_bollingers_band import Strategy_BB as BB
 from models.strategy_enum import Strategy
-
-
-from models.order import Order
 
 import core.queue_handler as queue
 import core.global_vars as gv
@@ -37,22 +27,17 @@ import core.modes.historic_mode as hm
 На вход получаем минутный фрейм, будем подоватьт по строчно т.е. будут известны история этих данных и 
 чтобы принять решение об открытии позиции нужно подождать закрытия следующего бара.
 """
-# TODO: Priority: 1 [general] Необходимл отладить стратегию(ии). На данный момент можно запустить симуляцию, но это не проверка стратегии на исторических данных.
-# Нужен отдельный режим history (как simulation\trade), что покажет, где бы по текущей стртегии был бы вход в сделку, выход из нее и профит + расчет итогового профита.
+
 # TODO: Priority: 2 [general] Обложить все юнит тестами
 # TODO: Priority: 3[general/sim/history] Должна быть возможность выставить SLTP не только в значении ATR.
 # TODO: Пока выносить параметры, что стоит указывать в аргументах при запуске, а не хардкодить.
 # TODO: Сделать возможность выставлять только SL или TP
 # Период для индикаторов
-# window = 50
 
 
 # Функция определения режима
 def monney_mode_select(symbol, strategy):
     mm = gv.global_args.monney_mode
-    # strategy = BB(20)
-    # indicators = [Bollinger('BB', 20), RSI("RSI14", 14, True), ATR("ATR", 14)]
-    # indicators = [MA('MA50', window), RSI("RSI14", 14, True), ATR("ATR", 14)]
     if mm == "simulation": return sm.Simulation_mode(symbol, strategy)
     if mm == "trade": return tm.Trade_mode(symbol, strategy)
     if mm == "historic": return hm.Historic_mode(symbol, strategy)
@@ -72,7 +57,7 @@ def symbols_workers_start(producers):
         logger.debug("Symbols lenght: " + str(len(args.symbols)))
         for symbol in args.symbols:
             logger.info(str(symbol) + ": start()")
-            thread=threading.Thread(target=monney_mode_select, args=(symbol, Strategy[gv.global_args.strategy].value,), daemon=True)
+            thread=threading.Thread(target=monney_mode_select, args=(symbol, Strategy[gv.global_args.strategy].value), daemon=True)
             thread.start()
             producers.append(thread)
     return producers

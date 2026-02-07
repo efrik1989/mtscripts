@@ -1,5 +1,4 @@
 from pandas.plotting import register_matplotlib_converters
-from core import risk_manager
 from models.order import Order
 
 register_matplotlib_converters()
@@ -25,12 +24,12 @@ class Simulation_mode(Mode):
         if type(self.order) != Order:
             if (signal == "Open_buy" or (gv.global_args.buy_sell == True and signal == "Open_sell")):
                 logger.info(str(symbol) + ": Signal to open position find: " + signal)
-                if risk_manager.is_tradable():
+                if self.risk_manager.is_tradable(force_update=True):
                     logger.info(str(symbol) + ": Signal to open position find: " + signal)
-                    self.order = Order(current_price, symbol, atr_value, isbuy= True if signal == "Open_buy" else False)
+                    self.order = Order(current_price, symbol, atr_value, isBuy=True if signal == "Open_buy" else False)
                     self.order.open_fake_position()
                     self.locker.is_bar_locked = True
-                    self.frame = self.position_id_in_frame(self.order, self.frame, self.is_order_open)
+                    #self.frame = self.position_id_in_frame(self.order, self.frame, self.is_order_open)
 
     # Проверка закрытия сделки buy
     def close_position_signal_checker(self, symbol, current_price, close_signal):
@@ -60,7 +59,8 @@ class Simulation_mode(Mode):
 
     def signals_handler(self, symbol, current_price, signal, atr_value, close_signal):
         super().signals_handler()
-        try:      
+        try:
+            logger.debug(f"{symbol}: Locker is {self.locker.is_bar_locked}")      
             if not self.locker.is_bar_locked:
                 self.open_position_signal_checker(symbol, current_price, signal, atr_value)
 

@@ -2,11 +2,20 @@ import logging
 import logging.handlers
 import core.global_vars as gv
 
+from enum import Enum
+
+class LogLevel(Enum):
+    DEBUG = logging.DEBUG
+    INFO = logging.INFO
+    WARNING = logging.WARNING
+    ERROR = logging.ERROR
+    CRIT = logging.CRITICAL
+
 _log_format = f"[%(asctime)s] - [%(levelname)s] - %(name)s - (%(filename)s).%(funcName)s(%(lineno)d) - %(message)s"
 
 def get_file_handler(filename):
     file_handler = logging.FileHandler(filename)
-    file_handler.setLevel(logging.INFO)
+    file_handler.setLevel(LogLevel[gv.global_args.loglevel].value)
     file_handler.setFormatter(logging.Formatter(_log_format))
     return file_handler
 
@@ -32,7 +41,7 @@ def get_logger(name):
     else:
         log_filename = "test.txt"
     logger = logging.getLogger(name)
-    logger.setLevel(logging.INFO)
+    logger.setLevel(LogLevel[gv.global_args.loglevel].value)
     logger.addHandler(get_file_handler(log_filename))
     # TODO: Priority: 3 Блядство... В винде ротация логов с нескольькими потоками не работает
     # https://qna.habr.com/q/1341954

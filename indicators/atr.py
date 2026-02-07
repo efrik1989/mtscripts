@@ -5,7 +5,7 @@ import core.app_logger as app_logger
 logger=app_logger.get_logger(__name__)
 
 class ATR(Indicator):
-    def __init__(self, name, period):
+    def __init__(self, name, period, coefficient=2):
         self.name = name
         self.period = period
 

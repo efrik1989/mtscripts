@@ -13,7 +13,7 @@ logger=app_logger.get_logger(__name__)
 # Класс отвечающий за описание ордера
 class Order():
 
-    def __init__(self, open_price, symbol, atr_value, isBuy):
+    def __init__(self, open_price, symbol, atr_value, isBuy: bool):
         self.open_price = open_price    # Цена открытия сделки.
         self.symbol = symbol
         self.trade_obj = trade.Trade(symbol, 1.0, atr_value, atr_value)

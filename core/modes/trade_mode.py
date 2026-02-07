@@ -1,15 +1,11 @@
 from pandas.plotting import register_matplotlib_converters
-from core import risk_manager
 from models.order import Order
 
 register_matplotlib_converters()
 
-from metatrader5EasyT import tick
-from core.mt5_actions import MT5_actions as mt5_a
 import core.app_logger as app_logger
 
 logger=app_logger.get_logger(__name__)
-from core.trade_locker import Locker
 from models.mode import Mode
 
 import core.global_vars as gv
@@ -24,7 +20,7 @@ class Trade_mode(Mode):
         if type(self.order) != Order:
             if (signal == "Open_buy" or (gv.global_args.buy_sell == True and signal == "Open_sell")):
                 logger.info(str(symbol) + ": Signal to open position find: " + signal)
-                if risk_manager.is_tradable():
+                if self.risk_manager.is_tradable(force_update=True):
                     logger.info("Risk manager checker: Ok.")
                     self.order = Order(current_price, symbol, atr_value, isbuy= True if signal == "Open_buy" else False)
                     self.order.open_position()
