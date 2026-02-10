@@ -1,7 +1,9 @@
 import math
 import MetaTrader5 as Mt5
 from abstractEasyT import trade
-from supportLibEasyT import log_manager
+import core.app_logger as app_logger
+
+logger = app_logger.get_logger(__name__)
 
 
 class Trade(trade.Trade):
@@ -42,9 +44,6 @@ class Trade(trade.Trade):
 
         """
 
-        self._log = log_manager.LogManager('metatrader5')
-        self._log.logger.info('Logger Initialized in Trade')
-
         self.symbol = symbol.upper()
         self.lot = lot
         self.stop_loss = stop_loss
@@ -84,7 +83,7 @@ class Trade(trade.Trade):
             12.34
 
         """
-        self._log.logger.info('Normalizing the price')
+        logger.info('Normalizing the price')
         return math.floor(float(self.points * round(price / self.points)) * 100) / 100
 
     def open_buy(self) -> None:
@@ -128,7 +127,7 @@ class Trade(trade.Trade):
         self.ticket = (Mt5.positions_get(symbol=self.symbol)[0].ticket if len(
             Mt5.positions_get(symbol=self.symbol)) == 1 else 0)
 
-        self._log.logger.info(f'BUY Order sent: {self.symbol},'
+        logger.info(f'BUY Order sent: {self.symbol},'
                               f' {self.lot} lot(s),'
                               f' at {price},'
                               f' stoploss:{self.normalize(price - self.stop_loss)},'
@@ -154,11 +153,11 @@ class Trade(trade.Trade):
         result = Mt5.order_send(request)
 
         if result is None or result.retcode != Mt5.TRADE_RETCODE_DONE:
-            self._log.logger.error(f'Something went wrong: Position Not Found for symbol {self.symbol}!'
+            logger.error(f'{self.symbol}: Something went wrong: Position Not Found for symbol {self.symbol}!'
                                    f' Last Error: {Mt5.last_error()}')
 
         else:
-            self._log.logger.info('Change trade direction to BUY.')
+            logger.info('{self.symbol}: Change trade direction to BUY.')
             self.trade_direction = 'buy'
 
     def open_sell(self):
@@ -202,7 +201,7 @@ class Trade(trade.Trade):
         self.ticket = (Mt5.positions_get(symbol=self.symbol)[0].ticket if len(
             Mt5.positions_get(symbol=self.symbol)) == 1 else 0)
 
-        self._log.logger.info(f'SELL Order sent: {self.symbol},'
+        logger.info(f'{self.symbol}: SELL Order sent: {self.symbol},'
                               f' {self.lot} lot(s),'
                               f' at {price},'
                               f' stoploss:{self.normalize(price - self.stop_loss)},'
@@ -227,11 +226,11 @@ class Trade(trade.Trade):
 
         result = Mt5.order_send(request)
         if result is None or result.retcode != Mt5.TRADE_RETCODE_DONE:
-            self._log.logger.error(f'Something went wrong: Position Not Found for symbol {self.symbol}!'
+            logger.error(f'{self.symbol}: Something went wrong: Position Not Found for symbol {self.symbol}!'
                                    f' Last Error: {Mt5.last_error()}')
 
         else:
-            self._log.logger.info('Change trade direction to SELL.')
+            logger.info('{self.symbol}: Change trade direction to SELL.')
             self.trade_direction = 'sell'
 
     def position_open(self, buy: bool, sell: bool) -> str or None:
@@ -305,18 +304,18 @@ class Trade(trade.Trade):
             >>> # Nothing happens
 
         """
-        self._log.logger.info(f'Open position called. Buy is {str(buy)}, and sell is {str(sell)}. Trade allowed is '
+        logger.info(f'{self.symbol}: Open position called. Buy is {str(buy)}, and sell is {str(sell)}. Trade allowed is '
                               f'{self._trade_allowed}.')
 
         self.position_check()
         if self._trade_allowed and self.trade_direction is None:
             if buy and not sell:
-                self._log.logger.info('BUY is true, SELL is false')
+                logger.info('{self.symbol}: BUY is true, SELL is false')
                 self.open_buy()
                 self.position_check()
 
             if sell and not buy:
-                self._log.logger.info('BUY is false, SELL is true')
+                logger.info('{self.symbol}: BUY is false, SELL is true')
                 self.open_sell()
                 self.position_check()
 
@@ -368,15 +367,15 @@ class Trade(trade.Trade):
 
 
         """
-        self._log.logger.info('Close position called.')
+        logger.info('{self.symbol}: Close position called.')
         self.position_check()
         if self.trade_direction == 'buy':
-            self._log.logger.info('Close BUY position.')
+            logger.info('{self.symbol}: Close BUY position.')
             self.open_sell()
             self.position_check()
 
         elif self.trade_direction == 'sell':
-            self._log.logger.info('Close SELL position')
+            logger.info('{self.symbol}: Close SELL position')
             self.open_buy()
             self.position_check()
 
@@ -430,18 +429,18 @@ class Trade(trade.Trade):
 
 
         """
-        self._log.logger.info('Calls Metatrader5 to check if there is a position opened.')
+        logger.info('{self.symbol}: Calls Metatrader5 to check if there is a position opened.')
         result = Mt5.positions_get(symbol=self.symbol)
         if len(result) > 0:
-            self._log.logger.info('There is a position opened.')
+            logger.info('{self.symbol}: There is a position opened.')
             if result[0].type == 0:  # if buy
-                self._log.logger.info('Set the trade direction to BUY')
+                logger.info('{self.symbol}: Set the trade direction to BUY')
                 self.trade_direction = 'buy'
 
             elif result[0].type == 1:  # if sell
-                self._log.logger.info('Set the trade direction to SELL')
+                logger.info('{self.symbol}: Set the trade direction to SELL')
                 self.trade_direction = 'sell'
         else:
-            self._log.logger.info('There are no position opened.')
-            self._log.logger.info('Set the trade direction to None')
+            logger.info('{self.symbol}: There are no position opened.')
+            logger.info('{self.symbol}: Set the trade direction to None')
             self.trade_direction = None
