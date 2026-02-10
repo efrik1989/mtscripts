@@ -25,7 +25,7 @@ class Simulation_mode(Mode):
             if (signal == "Open_buy" or (gv.global_args.buy_sell == True and signal == "Open_sell")):
                 logger.info(str(symbol) + ": Signal to open position find: " + signal)
                 if self.risk_manager.is_tradable(force_update=True):
-                    logger.info(str(symbol) + ": Signal to open position find: " + signal)
+                    logger.info(str(symbol) + ": Risk manager checker: Ok.")
                     self.order = Order(current_price, symbol, atr_value, isBuy=True if signal == "Open_buy" else False)
                     self.order.open_fake_position()
                     self.locker.is_bar_locked = True

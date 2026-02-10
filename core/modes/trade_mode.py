@@ -22,10 +22,10 @@ class Trade_mode(Mode):
                 logger.info(str(symbol) + ": Signal to open position find: " + signal)
                 if self.risk_manager.is_tradable(force_update=True):
                     logger.info("Risk manager checker: Ok.")
-                    self.order = Order(current_price, symbol, atr_value, isbuy= True if signal == "Open_buy" else False)
+                    self.order = Order(current_price, symbol, atr_value, isBuy= True if signal == "Open_buy" else False)
                     self.order.open_position()
                     self.locker.is_bar_locked = True
-                    self.frame = self.position_id_in_frame(self.order, self.frame, self.is_order_open)
+                    # self.frame = self.position_id_in_frame(self.order, self.frame, self.is_order_open)
 
     # Проверка закрытия сделки buy
     def close_position_signal_checker(self, symbol, close_signal):
@@ -45,9 +45,10 @@ class Trade_mode(Mode):
         super().signals_handler()
         try:      
             if not self.locker.is_bar_locked:
-                self.open_position_signal_checker(symbol, current_price, signal, atr_value)
 
                 self.close_position_signal_checker(symbol, close_signal)
+
+                self.open_position_signal_checker(symbol, current_price, signal, atr_value)
 
                 self.trailing_stop_checker(current_price)
 

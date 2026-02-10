@@ -9,7 +9,7 @@ from core.trade_locker import Locker
 import core.app_logger as app_logger
 from models.order import Order
 from models.strategy import Strategy
-from core.mt5_actions import MT5_actions as mt5_a   
+from mt5.mt5_actions import MT5_actions as mt5_a   
 
 logger=app_logger.get_logger(__name__)
 
@@ -70,6 +70,7 @@ class Mode():
             current_price = mt5_a.get_price(self.tick_obj)
             # Отладочный 
             # signal = "Open_buy"
+            # close_signal = "Close_buy"
             logger.debug(f"Signal: {signal}, Close_signal: {close_signal}, ATR: {atr_value}, Current price: {current_price}")
            
             self.signals_handler(symbol, current_price, signal, atr_value, close_signal)
