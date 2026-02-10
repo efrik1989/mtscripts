@@ -1,7 +1,6 @@
 import time
 import MetaTrader5 as mt5
-from datetime import datetime
-from metatrader5EasyT import trade
+import core.mt5.mt5_trade as trade
 import pandas as pd
 import core.global_vars as gv
 import core.app_logger as app_logger
@@ -27,7 +26,7 @@ class Order():
 
 
     def position_check(self):
-        self.position_check()
+        self.trade_obj.position_check()
 
     # Метод открытия сделки в симуляции
     def open_fake_position(self):
@@ -63,12 +62,19 @@ class Order():
         return profit
 
     def open_position(self):
-        logger.info("Order.id = " + str(self.id))
-        self.trade_obj.position_open(self.isBuyis, not self.isBuy)
+        try:
+            logger.info("Order.id = " + str(self.id))
+            self.trade_obj.position_open(self.isBuy, not self.isBuy)
+        except:
+            logger.error(f"{self.symbol}: Somthing went wrong to open position!!!")
 
     def close_position(self):
-        logger.info("Order.id = " + str(self.id))
-        self.trade_obj.position_close()
+        try:
+            logger.info("Order.id = " + str(self.id))
+            self.trade_obj.position_close()
+        except:
+            logger.error(f"{self.symbol}: Somthing went wrong to close position!!!")
+        
     
     # TODO: Priority: 1 [general\sim]Реализовать трэйлинг стоп
     #  аргумент теукщая цена. Если цена увеличилась на фиксированое значение(значение или % тут надо подумать), то сдвигаем стоп лосс.

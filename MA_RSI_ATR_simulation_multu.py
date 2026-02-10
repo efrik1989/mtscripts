@@ -8,7 +8,7 @@ args = parser.args_parse()
 from core.risk_manager import RiskManager
 risk_manager = RiskManager(args.monney_manager, args.lost_risk)
 
-from core.mt5_actions import MT5_actions as mt5_a
+from mt5.mt5_actions import MT5_actions as mt5_a
 import core.app_logger as app_logger
 
 logger=app_logger.get_logger(__name__)

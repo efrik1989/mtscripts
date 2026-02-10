@@ -1,5 +1,5 @@
 import unittest
-from core.mt5_actions import MT5_actions as mt5_a
+from mt5.mt5_actions import MT5_actions as mt5_a
 import core.global_vars as gv
 
 class MT5_getPeriodTicks_test(unittest.TestCase):
