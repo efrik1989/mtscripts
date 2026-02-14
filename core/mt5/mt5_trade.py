@@ -233,7 +233,7 @@ class Trade(trade.Trade):
             logger.info(f'{self.symbol}: Change trade direction to SELL.')
             self.trade_direction = 'sell'
 
-    def position_open(self, buy: bool, sell: bool) -> str or None:
+    def position_open(self, buy: bool, sell: bool) -> str | None:
         """
         This function receives two bool variables, buy and sell, if one of this variable is true and the other is false,
         it opens a position to the side that is true, if both variable is true or both variable is false, it does not

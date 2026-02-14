@@ -1,4 +1,5 @@
-from indicators.ma import MA
+import pandas_ta as ta
+import pandas as pd
 from models.indicator import Indicator
 
 
@@ -6,15 +7,15 @@ from models.indicator import Indicator
 class MACD(Indicator):
     def __init__(self, name, period, fast, slow, signal):
         super().__init__(name, period)
+        self.fast = fast
+        self.slow = slow
+        self.signal = signal
 
-        # TODO: Выглядит так что можно в список затолкать... Пока не критично.
-        self.fast_ema = MA("fast_MA", fast, "ema")
-        self.slow_ema = MA("slow_MA", slow, "ema")
-        self.signal_ema = MA("signal_MA", signal, "ema")
-
-    def update_values(self, frame):
-        frame = self.fast_ema.update_values(frame)
-        frame = self.slow_ema.update_values(frame)
-        frame = self.signal_ema.update_values(frame)
-        frame['divergence'] = frame['slow_MA'] - frame['fast_MA']
+    # fast=12, slow=26, signal=9
+    def update_values(self, frame: pd.DataFrame):
+        macd = ta.macd(frame['close'], fast=self.fast, slow=self.slow, signal=self.signal)
+        frame['macd_line'] = macd['MACD_12_26_9']
+        frame['macd_signal'] = macd['MACDs_12_26_9']
+        frame['macd_hist'] = macd['MACDh_12_26_9']
+        frame['macd_hist_sh1'] = frame['macd_hist'].shift(1)
         return frame
