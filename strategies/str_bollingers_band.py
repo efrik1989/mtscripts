@@ -1,11 +1,13 @@
 import numpy as np
-from indicators.macd import MACD
 from models.strategy import Strategy
-import core.app_logger as app_logger
+
 from indicators.rsi import RSI
 from indicators.atr import ATR
 from indicators.bollinger_bands import Bollinger
+from indicators.macd import MACD
+from indicators.adx import ADX
 
+import core.app_logger as app_logger
 logger=app_logger.get_logger(__name__)
 
 
@@ -14,33 +16,29 @@ logger=app_logger.get_logger(__name__)
 class Strategy_BB(Strategy):
         def __init__(self, period):
                 super().__init__(period)
-                self.indicators = [Bollinger('BB', period), RSI("RSI", 14, True), ATR("ATR", 14)]
+                self.indicators = [Bollinger('BB', period), RSI("RSI", 14, True), MACD('MACD', 12, 12, 26, 9), ADX('ADX', 14), ATR("ATR", 14)]
 
 
         # TODO: Прописать суммарные сигналы для BB, MACD, RSI   
         # Проставление сигналов открытия сделок
         def open_strategy(self, frame):
             logger.info("BB strategy: start frame analis...")
+
+            # frame['atr_ma'] = frame['ATR'].rolling(window=100).mean()
+            # volatility_filter = frame['ATR'] > frame['atr_ma']
             
-            """frame['close_day_befor_1'] = frame['close'].shift(1)
-            frame['close_day_befor_2'] = frame['close'].shift(2)
-            
-            frame['MA_day_befor_1'] = frame['MA'].shift(1)
-            frame['MA_day_befor_2'] = frame['MA'].shift(2)"""
+            # ADX '(frame['ADX'] > 18)' заменяем на 'ATR frame['ATR'] > frame['atr_ma']'
+            # MACD long (frame['macd_hist'] > frame['macd_hist_sh1']) short (frame['macd_hist'] < frame['macd_hist_sh1'])
 
-            # Добавил RSI и вообще все перестало работать.
-            """
-            df['signal_buy'] = (df['close'] < df['BBL_20_2.0']) & (df['RSI_14'] < 30)
-
-            # Условия для продажи (Short)
-            df['signal_sell'] = (df['close'] > df['BBU_20_2.0']) & (df['RSI_14'] > 70)
-
-            # Выход из сделки (пример по средней линии)
-            df['exit_long'] = df['close'] >= df['BBM_20_2.0']
-            """
             conditions = [
-                (frame['close'] < frame['BBL_20_2.0_2.0']) & (frame['RSI'] < 30) & (frame['RSI'] < 30),
-                (frame['close'] > frame['BBU_20_2.0_2.0']) & (frame['RSI'] > 70)]
+                (frame['low'] <= frame['BBL_20_2.0_2.0']) & 
+                (frame['RSI'] < 40) & 
+                (frame['ADX'] > 18) &
+                (frame['macd_hist'] > frame['macd_hist_sh1']),
+                (frame['high'] >= frame['BBU_20_2.0_2.0']) & 
+                (frame['RSI'] > 75) & 
+                (frame['ADX'] > 18) &
+                (frame['macd_hist'] < frame['macd_hist_sh1'])]
             chois = ["Open_buy", "Open_sell"]
             frame['signal'] = np.select(conditions, chois, default="NaN")   
             return frame

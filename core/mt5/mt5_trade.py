@@ -83,7 +83,7 @@ class Trade(trade.Trade):
             12.34
 
         """
-        logger.info('Normalizing the price')
+        logger.info(f'{self.symbol}: Normalizing the price')
         return math.floor(float(self.points * round(price / self.points)) * 100) / 100
 
     def open_buy(self) -> None:
@@ -157,7 +157,7 @@ class Trade(trade.Trade):
                                    f' Last Error: {Mt5.last_error()}')
 
         else:
-            logger.info('{self.symbol}: Change trade direction to BUY.')
+            logger.info(f'{self.symbol}: Change trade direction to BUY.')
             self.trade_direction = 'buy'
 
     def open_sell(self):
@@ -230,10 +230,10 @@ class Trade(trade.Trade):
                                    f' Last Error: {Mt5.last_error()}')
 
         else:
-            logger.info('{self.symbol}: Change trade direction to SELL.')
+            logger.info(f'{self.symbol}: Change trade direction to SELL.')
             self.trade_direction = 'sell'
 
-    def position_open(self, buy: bool, sell: bool) -> str or None:
+    def position_open(self, buy: bool, sell: bool) -> str | None:
         """
         This function receives two bool variables, buy and sell, if one of this variable is true and the other is false,
         it opens a position to the side that is true, if both variable is true or both variable is false, it does not
@@ -310,12 +310,12 @@ class Trade(trade.Trade):
         self.position_check()
         if self._trade_allowed and self.trade_direction is None:
             if buy and not sell:
-                logger.info('{self.symbol}: BUY is true, SELL is false')
+                logger.info(f'{self.symbol}: BUY is true, SELL is false')
                 self.open_buy()
                 self.position_check()
 
             if sell and not buy:
-                logger.info('{self.symbol}: BUY is false, SELL is true')
+                logger.info(f'{self.symbol}: BUY is false, SELL is true')
                 self.open_sell()
                 self.position_check()
 
@@ -367,15 +367,15 @@ class Trade(trade.Trade):
 
 
         """
-        logger.info('{self.symbol}: Close position called.')
+        logger.info(f'{self.symbol}: Close position called.')
         self.position_check()
         if self.trade_direction == 'buy':
-            logger.info('{self.symbol}: Close BUY position.')
+            logger.info(f'{self.symbol}: Close BUY position.')
             self.open_sell()
             self.position_check()
 
         elif self.trade_direction == 'sell':
-            logger.info('{self.symbol}: Close SELL position')
+            logger.info(f'{self.symbol}: Close SELL position')
             self.open_buy()
             self.position_check()
 
@@ -429,18 +429,18 @@ class Trade(trade.Trade):
 
 
         """
-        logger.info('{self.symbol}: Calls Metatrader5 to check if there is a position opened.')
+        logger.info(f'{self.symbol}: Calls Metatrader5 to check if there is a position opened.')
         result = Mt5.positions_get(symbol=self.symbol)
         if len(result) > 0:
-            logger.info('{self.symbol}: There is a position opened.')
+            logger.info(f'{self.symbol}: There is a position opened.')
             if result[0].type == 0:  # if buy
-                logger.info('{self.symbol}: Set the trade direction to BUY')
+                logger.info(f'{self.symbol}: Set the trade direction to BUY')
                 self.trade_direction = 'buy'
 
             elif result[0].type == 1:  # if sell
-                logger.info('{self.symbol}: Set the trade direction to SELL')
+                logger.info(f'{self.symbol}: Set the trade direction to SELL')
                 self.trade_direction = 'sell'
         else:
-            logger.info('{self.symbol}: There are no position opened.')
-            logger.info('{self.symbol}: Set the trade direction to None')
+            logger.info(f'{self.symbol}: There are no position opened.')
+            logger.info(f'{self.symbol}: Set the trade direction to None')
             self.trade_direction = None
