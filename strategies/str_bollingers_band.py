@@ -26,15 +26,24 @@ class Strategy_BB(Strategy):
 
             # frame['atr_ma'] = frame['ATR'].rolling(window=100).mean()
             # volatility_filter = frame['ATR'] > frame['atr_ma']
+                
             
             # ADX '(frame['ADX'] > 18)' заменяем на 'ATR frame['ATR'] > frame['atr_ma']'
             # MACD long (frame['macd_hist'] > frame['macd_hist_sh1']) short (frame['macd_hist'] < frame['macd_hist_sh1'])
+            #Вариант 2. Long - RSI < 45 & ADX > 15 & (frame['macd_hist'] > frame['macd_hist_sh1']) 65% эффективности.
+            #Вариант 3. (пока фаворит) 64,6% эффективности, но сделок больше в 2 раза.
+            condition_macd_confirm = (frame['ADX'] >= 15) & \
+                         (frame['ADX'] < 25) & \
+                         (frame['macd_hist'] < frame['macd_hist_sh1'])
 
+            # Условие Б: Сильный тренд, где MACD можно игнорировать
+            condition_strong_trend = (frame['ADX'] >= 25)
+                  
             conditions = [
                 (frame['low'] <= frame['BBL_20_2.0_2.0']) & 
-                (frame['RSI'] < 40) & 
-                (frame['ADX'] > 18) &
-                (frame['macd_hist'] > frame['macd_hist_sh1']),
+                (frame['RSI'] < 45) & 
+                (frame['ADX'] > 15) &
+                (condition_macd_confirm | condition_strong_trend),
                 (frame['high'] >= frame['BBU_20_2.0_2.0']) & 
                 (frame['RSI'] > 75) & 
                 (frame['ADX'] > 18) &
