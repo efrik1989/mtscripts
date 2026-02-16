@@ -78,6 +78,7 @@ def commands_handler():
         logger.warning("Ошибка при работе с вводом! Экстренное завершение программы.")    
 
 def startRobot():
+    logger.info("-----------------------Start new session----------------------")
     mt5_a.init_MT5()
     mt5_a.authorization(args.account, args.password)
     
