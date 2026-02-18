@@ -15,7 +15,7 @@ class Args_parser():
         parser.add_argument("-d", "--logs_directory", help="Logs store directory.", action="store", default="logs")
         parser.add_argument("-l", "--logfile", help="Logfile path. Default: '.\\logs\\everything.log'", action="store", default="everything.log")
         parser.add_argument("-ll", "--loglevel", help="Example: DEBUG, INFO, WARNING, ERROR, CRIT.", action="store", default="INFO")
-        parser.add_argument("-r", "--range", type=int, help="Range of bar at first analis.", action="store", default=100)
+        parser.add_argument("-r", "--range", type=int, help="Range of bar at first analis.", action="store", default=300)
         parser.add_argument("-t", "--timeframe", help="Timeframe of instrument grafic. Default: 'M5' (5 minuts).\n" \
             " Posible values:\n" \
             " M5 - 5 minutes,\n" \

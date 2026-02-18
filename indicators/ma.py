@@ -32,7 +32,7 @@ class MA(Indicator):
     
     
     def update_ema(self, frame: pd.DataFrame):
-         frame['MA'] = frame['close'].ewm(span=self.period, adjust=False).mean()
+         frame[self.name] = frame['close'].ewm(span=self.period, adjust=False).mean()
          return frame
     
     def update_sma(self, frame):
