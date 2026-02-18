@@ -13,6 +13,7 @@ import core.app_logger as app_logger
 
 logger=app_logger.get_logger(__name__)
 from models.mode import Mode
+from models.lots_enum import Lot
 
 import core.global_vars as gv
 
@@ -145,7 +146,7 @@ class Historic_mode(Mode):
     # TODO: Анализ результатов надо загружать в файл excell
     # Т.е. в объект pd.Dataframe нужно собрать данные со всех потоков и запихать в excell.
     # Пу-пу-пу...  
-    def set_finish_resume(self, symbol, frame):
+    def set_finish_resume(self, symbol, frame: pd.DataFrame):
         # file_name = "analis_result.txt"
 
         self.close_open_positions(frame['close'], symbol)
@@ -158,11 +159,15 @@ class Historic_mode(Mode):
                             "Эффективность стратегии: " + str(self.get_efficiency()) + "\n") 
         output_file.close()
         """
+
+        # Тут забил в enum только
         data = {'symbol' : symbol, \
                 'deals_count' : self.orders_count, \
                 'profit' : self.get_profit_sum(), \
                 'profit_deals' : self.profit_orders_count, \
-                'efficiency' : self.get_efficiency()}
+                'efficiency' : self.get_efficiency(), \
+                'lot' : Lot[symbol].value, \
+                'last_price' : frame['close']    }
         
         queue.set_data_to_queue(data)
         print("Processing finished.")

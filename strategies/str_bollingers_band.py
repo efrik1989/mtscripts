@@ -6,6 +6,7 @@ from indicators.atr import ATR
 from indicators.bollinger_bands import Bollinger
 from indicators.macd import MACD
 from indicators.adx import ADX
+from indicators.ma import MA
 
 import core.app_logger as app_logger
 logger=app_logger.get_logger(__name__)
@@ -16,7 +17,11 @@ logger=app_logger.get_logger(__name__)
 class Strategy_BB(Strategy):
         def __init__(self, period):
                 super().__init__(period)
-                self.indicators = [Bollinger('BB', period), RSI("RSI", 14, True), MACD('MACD', 12, 12, 26, 9), ADX('ADX', 14), ATR("ATR", 14)]
+                self.indicators = [Bollinger('BB', period), 
+                                   RSI("RSI", 14, True), 
+                                   MACD('MACD', 12, 12, 26, 9), 
+                                   ADX('ADX', 14), 
+                                   ATR("ATR", 14), MA("EMA", 200, "ema")]
 
 
         # TODO: Прописать суммарные сигналы для BB, MACD, RSI   
@@ -34,15 +39,19 @@ class Strategy_BB(Strategy):
             #Вариант 3. (пока фаворит) 64,6% эффективности, но сделок больше в 2 раза.
             condition_macd_confirm = (frame['ADX'] >= 15) & \
                          (frame['ADX'] < 25) & \
-                         (frame['macd_hist'] < frame['macd_hist_sh1'])
+                         (frame['macd_hist'] > frame['macd_hist_sh1'])
 
             # Условие Б: Сильный тренд, где MACD можно игнорировать
             condition_strong_trend = (frame['ADX'] >= 25)
-                  
+            # Вариант 4: Результат: отсеклась львиная часть сделок, на некоторыхх инструментах повысилась эффективность. Но прибыль рухнула в 3 раза.
+            # condition_ema_filter = (frame['close'] > frame['EMA'])
+            # 
+            
+
             conditions = [
                 (frame['low'] <= frame['BBL_20_2.0_2.0']) & 
                 (frame['RSI'] < 45) & 
-                (frame['ADX'] > 15) &
+                (frame['ADX'] > 18) &
                 (condition_macd_confirm | condition_strong_trend),
                 (frame['high'] >= frame['BBU_20_2.0_2.0']) & 
                 (frame['RSI'] > 75) & 
@@ -54,9 +63,19 @@ class Strategy_BB(Strategy):
         
         # Проставление сигналов закрытия сделок
         def close_strategy(self, frame):
+            # Выход.
+            # Вариант 1:
+            # condition_rsi_momentum = (frame['RSI'] >= 60) & (frame['RSI'] < 70)
+            # condition_macd_hold = (frame['macd_hist'] > frame['macd_hist'].shift(1)) | \
+            #          (frame['macd_hist'] > 0)
+            
             conditions = [
-                (frame['close'] >= frame['BBM_20_2.0_2.0']),
-                (frame['close'] <= frame['BBM_20_2.0_2.0'])
+                (frame['close'] >= frame['BBM_20_2.0_2.0'])
+                # Условия ниже нужны. но нужно доработать адаптивность TP и трэйлинг-стоп по ATR.
+                # (frame['ADX'] < 25) 
+                # ~(condition_macd_hold | condition_rsi_momentum)
+                ,
+                (frame['close'] <= frame['BBM_20_2.0_2.0']) & (frame['ADX'] < 25)
                 ]
             chois = ["Close_buy", "Close_sell"]
             frame['close_signal'] = np.select(conditions, chois, default="NaN")

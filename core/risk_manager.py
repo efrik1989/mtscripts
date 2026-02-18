@@ -1,9 +1,9 @@
 import threading
 import time
 import MetaTrader5 as mt5
-import logging
+import core.app_logger as app_logger
 
-logger = logging.getLogger(__name__)
+logger=app_logger.get_logger(__name__)
 
 class SingletonMeta(type):
     _instances = {}
