@@ -37,7 +37,8 @@ class Args_parser():
         parser.add_argument("-p", "--password", help="Account password number in Finam.", action="store_true", default="3C$ap3%H")
         parser.add_argument("-mm", "--monney_manager", help="Percentage of the total balance that will be involved in trading.", action="store", default=100)
         parser.add_argument("-lr", "--lost_risk", help="Percentage of total balance that is allowed to be lost.", action="store", default=100)
-        parser.add_argument("-ts", "--trailing_stop", type=int, help="Price indent from Stop Loss.", action="store", default=0)
+        parser.add_argument("-ts", "--trailing_stop", help="Price indent from Stop Loss.", action="store", default=0)
+        parser.add_argument("-dtp", "--dynamic_take_profit", help="Price indent from Take Profit.", action="store_true", default=False)
         parser.add_argument("-bs", "--buy_sell", help="Type of deals. True - buy and sell, False - only buy. Example: -bs (it's True value).", action="store_true", default=False)
         parser.add_argument("-m", "--monney_mode", help="Mode of start. Posible values: \n" \
                             "simulation - trade simulation,\n" \

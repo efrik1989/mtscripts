@@ -26,7 +26,7 @@ class Simulation_mode(Mode):
                 logger.info(str(symbol) + ": Signal to open position find: " + signal)
                 if self.risk_manager.is_tradable(force_update=True):
                     logger.info(str(symbol) + ": Risk manager checker: Ok.")
-                    self.order = Order(current_price, symbol, atr_value, isBuy=True if signal == "Open_buy" else False)
+                    self.order = Order(current_price, symbol, self.strategy, atr_value, isBuy=True if signal == "Open_buy" else False)
                     self.order.open_fake_position()
                     self.locker.is_bar_locked = True
                     #self.frame = self.position_id_in_frame(self.order, self.frame, self.is_order_open)
@@ -51,6 +51,13 @@ class Simulation_mode(Mode):
                 if (current_price <= self.order.take_profit or current_price >= self.order.stop_loss ):
                     self.close_position_by_sltp(symbol, current_price)
 
+    # Функция dynamic_take_profit
+    def dynamic_tp_checker(self, new_tp):
+        super().dynamic_tp_checker()
+        if type(self.order) == Order and gv.global_args.dynamic_take_profit:
+            self.order.fake_set_new_take_profit(new_tp)
+            logger.debug(f"Order to change TP: {self.order.id}, значение:  {new_tp}")
+
     # Функция Trailing stop
     def trailing_stop_checker(self, current_price):
         super().trailing_stop_checker()
@@ -65,6 +72,8 @@ class Simulation_mode(Mode):
                 self.open_position_signal_checker(symbol, current_price, signal, atr_value)
 
                 self.close_position_signal_checker(symbol, current_price, close_signal)
+
+                self.dynamic_tp_checker(self.strategy.take_profit)
 
                 self.sl_tp_checker(symbol, current_price)
 

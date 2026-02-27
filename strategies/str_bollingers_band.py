@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 from models.strategy import Strategy
 
 from indicators.rsi import RSI
@@ -65,15 +66,18 @@ class Strategy_BB(Strategy):
         def close_strategy(self, frame):
             # Выход.
             # Вариант 1:
-            # condition_rsi_momentum = (frame['RSI'] >= 60) & (frame['RSI'] < 70)
-            # condition_macd_hold = (frame['macd_hist'] > frame['macd_hist'].shift(1)) | \
-            #          (frame['macd_hist'] > 0)
+            # TODO: [Priority: 1]Допилить стратегию выхода
+            condition_rsi_momentum = (frame['RSI'] >= 60) & (frame['RSI'] < 70)
+            condition_macd_hold = (frame['macd_hist'] > frame['macd_hist_sh1']) | \
+                      (frame['macd_hist'] > 0)
             
             conditions = [
+                # Попытка отключить Close_buy и проверить как себя поведет стратегия в симуляции
+                # (0 > 2)
                 (frame['close'] >= frame['BBM_20_2.0_2.0'])
                 # Условия ниже нужны. но нужно доработать адаптивность TP и трэйлинг-стоп по ATR.
-                # (frame['ADX'] < 25) 
-                # ~(condition_macd_hold | condition_rsi_momentum)
+                # (frame['ADX'] < 25) &
+                #  ~(condition_macd_hold | condition_rsi_momentum)
                 ,
                 (frame['close'] <= frame['BBM_20_2.0_2.0']) & (frame['ADX'] < 25)
                 ]
@@ -83,3 +87,11 @@ class Strategy_BB(Strategy):
             logger.info("strategy: Analis complete.")
             return frame
             
+        def sltp_startegy(self, frame: pd.DataFrame):
+            super().sltp_startegy(frame)
+            df = frame.tail(1)
+            try:
+                self.stop_loss = df['BBM_20_2.0_2.0'].item()
+                self.take_profit = df['BBU_20_2.0_2.0'].item()
+            except:
+                 logger.warning("Нет значенийй BBM/BBU.")

@@ -50,7 +50,8 @@ def historic_analis_writer(producers):
     frame = queue.set_data_to_frame()
     frame.to_excel(gv.global_args.logs_directory + "\\historic\\Analis_Result_" \
                        + gv.global_args.timeframe + "_Buy_Sell=" + str(gv.global_args.buy_sell) + \
-                        "_TrailingStop=" + str(gv.global_args.trailing_stop) + ".xlsx")
+                        "_TrailingStop=" + str(gv.global_args.trailing_stop) + \
+                            "_dynamic_take_profit=" + str(gv.global_args.dynamic_take_profit) + ".xlsx")
     
 def symbols_workers_start(producers):
     if len(args.symbols) != 0:

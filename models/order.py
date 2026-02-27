@@ -12,11 +12,14 @@ logger=app_logger.get_logger(__name__)
 # Класс отвечающий за описание ордера
 class Order():
 
-    def __init__(self, open_price, symbol, atr_value, isBuy: bool):
+    def __init__(self, open_price, symbol, strategy, atr_value, isBuy: bool):
         self.open_price = open_price    # Цена открытия сделки.
         self.symbol = symbol
-        self.trade_obj = trade.Trade(symbol, 1.0, atr_value, atr_value)
         self.atr_value = atr_value
+        self.stop_atr = self.atr_value * 2,5
+        self.take_atr = self.atr_value * 5
+        self.trade_obj = trade.Trade(symbol, 1.0, self.stop_atr, self.take_atr)
+        self.strategy = strategy
         self.isBuy = isBuy
         self.direction = "buy" if self.isBuy else "sell"
         self.stop_loss = None
@@ -41,12 +44,12 @@ class Order():
         output_file.close()
 
     def fake_buy(self):
-        self.stop_loss = self.open_price - self.atr_value
-        self.take_profit = self.open_price + self.atr_value
+        self.stop_loss = self.open_price - self.stop_atr
+        self.take_profit = self.open_price + self.take_atr
         
     def fake_sell(self):
-        self.stop_loss = self.open_price + self.atr_value
-        self.take_profit = self.open_price - self.atr_value
+        self.stop_loss = self.open_price + self.stop_atr
+        self.take_profit = self.open_price - self.take_atr
     # Метод закрытия сделки в симуляции
     def fake_buy_sell_close(self, current_price):
         logger.info("Order.id = " + str(self.id))
@@ -79,14 +82,15 @@ class Order():
     # TODO: Priority: 1 [general\sim]Реализовать трэйлинг стоп
     #  аргумент теукщая цена. Если цена увеличилась на фиксированое значение(значение или % тут надо подумать), то сдвигаем стоп лосс.
     def fake_traling_stop(self, current_price, indent):
+        if indent == "atr": indent = self.stop_atr
         isNeedToMoveSL = None
         new_value = None
         point=mt5.symbol_info(self.symbol).point
         if self.isBuy:
-            new_value = current_price - self.atr_value
+            new_value = current_price - self.stop_atr
             isNeedToMoveSL = (self.stop_loss + (indent * point)) <= new_value
         else:
-            new_value = current_price + self.atr_value
+            new_value = current_price + self.stop_atr
             isNeedToMoveSL = (self.stop_loss - (indent * point)) >= new_value
 
         if isNeedToMoveSL: 
@@ -96,6 +100,7 @@ class Order():
             output_file.close()
     
     def traling_stop(self, current_price, indent):
+        if indent == "atr": indent = self.stop_atr
         isNeedToMoveSL = None
         order_type = None
         new_value = None
@@ -105,11 +110,11 @@ class Order():
         #  Чисто теоретически если будет 1 позиция на символ, то должно рабоать корректно.
         self.stop_loss = pd.to_numeric(position['sl'])[-1]
         if self.isBuy:
-            new_value = current_price - self.atr_value
+            new_value = current_price - self.stop_atr
             isNeedToMoveSL = (self.stop_loss + indent * point) <= current_price
             order_type = mt5.ORDER_TYPE_BUY
         else:
-            new_value = current_price + self.atr_value
+            new_value = current_price + self.stop_atr
             isNeedToMoveSL = (self.stop_loss - indent * point) >= current_price
             order_type = mt5.ORDER_TYPE_SELL
         if isNeedToMoveSL: self.stop_loss = new_value
@@ -134,6 +139,44 @@ class Order():
             # request the result as a dictionary and display it element by element
             result_dict=result._asdict()
             logger.info("Value of Stop Loss is changed. SL = " + str(result_dict.get('sl')))
+           
+    def fake_set_new_take_profit(self, new_tp):
+        if new_tp != None or new_tp != "":
+            self.take_profit = new_tp
+
+    def set_new_take_profit(self, current_price, new_tp):
+        if new_tp != None or new_tp != "":
+            order_type = None
+            position = pd.DataFrame(mt5.positions_get(self.symbol))
+            # Вот тут дыра конечно... т.к. список может прийти с несколькими позициями.
+            #  Чисто теоретически если будет 1 позиция на символ, то должно рабоать корректно.
+            self.take_profit = pd.to_numeric(position['tp'])[-1]
+            if self.isBuy:
+                order_type = mt5.ORDER_TYPE_BUY
+            else:
+                order_type = mt5.ORDER_TYPE_SELL
+            self.take_profit = new_tp
+            
+            request = {
+                "action": mt5.TRADE_ACTION_SLTP,
+                "symbol": self.symbol,
+                "volume": 1.0,
+                "type": order_type,
+                "price": current_price,
+                "tp": self.take_profit,
+                "magic": 7777,
+            "comment": "dynamic TP, python",
+                "type_time": mt5.ORDER_TIME_GTC,
+                "type_filling": mt5.ORDER_FILLING_RETURN,
+            }
+            result=mt5.order_send(request)
+            if result.retcode != mt5.TRADE_RETCODE_DONE:
+                logger.error("4. order_send failed, retcode={}".format(result.retcode))
+                logger.error("   result",result)
+            else:
+                # request the result as a dictionary and display it element by element
+                result_dict=result._asdict()
+                logger.info("Value of Take Profit is changed. TP = " + str(result_dict.get('tp')))
 
     def to_string(self):
         return "" + str(self.open_price) + " " + str(self.symbol) + " " + str(self.isBuy)

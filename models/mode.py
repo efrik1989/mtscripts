@@ -43,8 +43,8 @@ class Mode():
 
     # Ограничитель в 5000 строк для DataFrame, для сбоерегания ресурсов
     def check_frame_len(self, frame: pd.DataFrame):
-        if len(frame) > 5000:
-            frame = frame.tail(5000)
+        if len(frame) > 10000:
+            frame = frame.tail(10000)
             logger.info("Фрэйм обрезан до 5000 строк с конца.")
         return frame
 
@@ -66,7 +66,7 @@ class Mode():
             # А затем пост обработкой все значения кроме тех где сигнал на покупку\продажу выставлять NaN. Для более простого анализа.
             signal = self.get_last_column_value(self.frame, 'signal')
             close_signal = self.get_last_column_value(self.frame, 'close_signal')
-            atr_value = float(self.get_last_column_value(self.frame, 'ATR') * 4)    
+            atr_value = float(self.get_last_column_value(self.frame, 'ATR'))    
             current_price = mt5_a.get_price(self.tick_obj)
             # Отладочный 
             # signal = "Open_buy"
@@ -82,8 +82,11 @@ class Mode():
             frame = self.update_frame_startegy(symbol, frame, last_bar_frame, strategy)
             # TODO: До делать метод  а то получается он сейчас не делает ничего...
             # frame = self.position_id_in_frame(order, frame, is_order_open)
-            frame.to_excel(f"{gv.global_args.logs_directory}\\frames\\out_{symbol}_{gv.global_args.strategy}_frame_signal_test.xlsx")
-            logger.info(f"{str(symbol)}: Frames update complete. Frame in: {gv.global_args.logs_directory}\\frames\\out_{symbol}_{gv.global_args.strategy}_frame_signal_test.xlsx to manual analis.")
+            if not 'order_id' in frame.columns:
+                frame['order_id'] = None
+                logger.info("Столбец 'order_id' не существует и будет создан.")
+                
+            self.write_in_excell(symbol, frame)
             locker.is_bar_locked = False
             return self.check_frame_len(frame)
         return frame
@@ -111,7 +114,7 @@ class Mode():
                 frame = strategy.update_values(symbol, frame, last_bar_frame)
                 # Для отладки frame.to_excel(gv.global_args.logs_directory + '\\frames\\out_' + str(symbol) + '.xlsx')
                 frame = strategy.update_strategy(frame)
-                    
+                strategy.sltp_startegy(frame)
                 return frame
         except(AttributeError):
             logger.critical(str(symbol) + ": 1 оr more objects become 'None/Null'")
@@ -124,24 +127,14 @@ class Mode():
             val = order_id
         return val
 
-    def position_id_in_frame(self, order: Order, frame: pd.DataFrame, is_order_open):
+    def position_id_in_frame(self, order: Order, frame: pd.DataFrame, index):
         """Метод обновления фрейма id открытыми позициями"""
-        if type(order) == Order or is_order_open:
+        value = None
+        if order is not None:
             value = order.id
-        else:
-            value = "NaN"
-
-        if 'order_id' in frame.columns:
-            frame.loc[frame.index[-1], 'order_id'] = value
-            logger.info("order_id обновлен.")
-        else:
-            logger.info("Столбец 'order_id' не существует и будет создан.")
-            # TODO: Реализация ниже подхоит только для одной стратегии. Переделать надо...
-            # close_ser = frame['target'].to_list()
-            # is_opened_list = []
-            # for index, item in enumerate(close_ser):
-            #     is_opened_list.append(self.isCondition(frame, index, value))
-            # frame['order_id'] = is_opened_list
+        if type(index) == int:
+            frame.at[index,'order_id'] = value
+        
         return frame
     
     def get_last_column_value(self, frame, column: str):
@@ -151,6 +144,10 @@ class Mode():
         except(KeyError):
             logger.warning("Отсутствую сигналы на закрытие или открытие. Рекомендуется ожидание сигналов.")
             return None
+        
+    def write_in_excell(self, symbol, frame):
+        frame.to_excel(f"{gv.global_args.logs_directory}\\frames\\out_{symbol}_{gv.global_args.strategy}_frame_signal_test.xlsx")
+        logger.info(f"{str(symbol)}: Frames update complete. Frame in: {gv.global_args.logs_directory}\\frames\\out_{symbol}_{gv.global_args.strategy}_frame_signal_test.xlsx to manual analis.")
         
     def close_position_by_sltp(self, symbol, current_price):
         logger.info(str(symbol) + ": Signal to close position find: SLTP")
@@ -168,6 +165,10 @@ class Mode():
     @abstractmethod
     def trailing_stop_checker(self):
         logger.debug("Функция Trailing stop")
+
+    @abstractmethod
+    def dynamic_tp_checker(self):
+        logger.debug("Функция Динамического TP")
 
     @abstractmethod
     def signals_handler(self):
