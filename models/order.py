@@ -12,12 +12,11 @@ logger=app_logger.get_logger(__name__)
 # Класс отвечающий за описание ордера
 class Order():
 
-    def __init__(self, open_price, symbol, strategy, atr_value, isBuy: bool):
+    def __init__(self, open_price, symbol, strategy, atr_value: float, isBuy: bool):
         self.open_price = open_price    # Цена открытия сделки.
         self.symbol = symbol
-        self.atr_value = atr_value
-        self.stop_atr = self.atr_value * 2,5
-        self.take_atr = self.atr_value * 5
+        self.stop_atr = atr_value * 2.5
+        self.take_atr = atr_value * 5
         self.trade_obj = trade.Trade(symbol, 1.0, self.stop_atr, self.take_atr)
         self.strategy = strategy
         self.isBuy = isBuy
@@ -26,6 +25,7 @@ class Order():
         self.take_profit = None
         self.id = random.randint(0, 100000)
         self.sim_log_path = gv.global_args.logs_directory + "\\" + gv.global_args.monney_mode + "\\simulation.txt"
+        logger.debug(f"self.open_price: {self.open_price}, symbol: {self.symbol}, strategy: {gv.global_args.strategy}, atr_value: {atr_value}, stop_atr: {self.stop_atr}")
 
 
     def position_check(self):

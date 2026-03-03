@@ -44,12 +44,16 @@ class MT5_actions():
 
     # Получение торговых данных инструмента за определенный промежуток
     def get_rates_frame(symbol:str, start_bar: int, bars_count: int, timeframe: str):
-        rates = mt5.copy_rates_from_pos(symbol, Timeframe[timeframe].value, start_bar, bars_count)
-        if len(rates) == 0:
-            logger.error(symbol + ": get_rates_frame(): Failed to get history data. " + str(mt5.last_error()))
-        rates_frame = pd.DataFrame(rates)
-        # rates_frame['time'] = pd.to_datetime(rates_frame['time'], unit='s')
-        rates_frame['close'] = pd.to_numeric(rates_frame['close'], downcast='float')
+        try:
+            rates = mt5.copy_rates_from_pos(symbol, Timeframe[timeframe].value, start_bar, bars_count)
+            if len(rates) == 0:
+                logger.error(symbol + ": get_rates_frame(): Failed to get history data. " + str(mt5.last_error()))
+            rates_frame = pd.DataFrame(rates)
+            # rates_frame['time'] = pd.to_datetime(rates_frame['time'], unit='s')
+            rates_frame['close'] = pd.to_numeric(rates_frame['close'], downcast='float')
+        except(TypeError):
+            logger.error(f"{symbol}: Отсутствуют данные за указанный промежуток времени.")
+            exit(1)
         return rates_frame
 
     # Получение последнего бара

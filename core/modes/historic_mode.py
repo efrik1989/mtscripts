@@ -47,7 +47,7 @@ class Historic_mode(Mode):
     def sl_tp_checker(self, symbol, frame,  index):
         super().sl_tp_checker()
         if (type(self.order) == Order):
-            logger.debug("Order to close by SLTP: " + str(self.order.id) + "SLTP: " + str(self.order.take_profit) + " " + str(self.order.stop_loss))
+            logger.debug(f"Order check to close by SLTP: {self.order.id}: TP: {self.order.take_profit}, SL: {self.order.stop_loss}")
             isSL = frame['low'] <= self.order.stop_loss and frame['high'] >= self.order.stop_loss
             isTP = frame['low'] <= self.order.take_profit and frame['high'] >= self.order.take_profit
             logger.debug("Order to close by SLTP: " + str(self.order.id) + " В диапазлне: " + str(isTP) + " " + str(isSL))
@@ -166,15 +166,18 @@ class Historic_mode(Mode):
 
         self.close_open_positions(frame['close'], symbol)
         pft = self.get_profit_sum()
+        lot = Lot[symbol].value
+        finish_profit = pft*lot
         # Тут забил в enum только голубые фишки
         data = {'symbol' : symbol, \
                 'deals_count' : self.orders_count, \
                 'profit' : pft, \
                 'profit_deals' : self.profit_orders_count, \
                 'efficiency' : self.get_efficiency(), \
-                'lot' : Lot[symbol].value, \
+                'lot' : lot, \
                 'last_price' : frame['close'], \
-                'finish_profit' : (pft*Lot[symbol].value)          }
+                'finish_profit' : finish_profit, \
+                'profit-commision' : finish_profit - ((frame['close'] * 0.0657 / 100) * self.orders_count)            }
         
         queue.set_data_to_queue(data)
         print(f"{symbol}: Processing finished.")

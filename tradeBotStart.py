@@ -48,8 +48,8 @@ def historic_analis_writer(producers):
             t.join()
 
     frame = queue.set_data_to_frame()
-    frame.to_excel(gv.global_args.logs_directory + "\\historic\\Analis_Result_" \
-                       + gv.global_args.timeframe + "_Buy_Sell=" + str(gv.global_args.buy_sell) + \
+    frame.to_excel(gv.global_args.logs_directory + "\\historic\\Analis_Result_" + str(gv.global_args.strategy) + "_" + \
+                       str(gv.global_args.timeframe) + "_Buy_Sell=" + str(gv.global_args.buy_sell) + \
                         "_TrailingStop=" + str(gv.global_args.trailing_stop) + \
                             "_dynamic_take_profit=" + str(gv.global_args.dynamic_take_profit) + ".xlsx")
     
