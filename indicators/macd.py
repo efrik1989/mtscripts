@@ -14,8 +14,8 @@ class MACD(Indicator):
     # fast=12, slow=26, signal=9
     def update_values(self, frame: pd.DataFrame):
         macd = ta.macd(frame['close'], fast=self.fast, slow=self.slow, signal=self.signal)
-        frame['macd_line'] = macd['MACD_12_26_9']
-        frame['macd_signal'] = macd['MACDs_12_26_9']
-        frame['macd_hist'] = macd['MACDh_12_26_9']
+        frame['macd_line'] = macd[f'MACD_{self.fast}_{self.slow}_{self.signal}']
+        frame['macd_signal'] = macd[f'MACDs_{self.fast}_{self.slow}_{self.signal}']
+        frame['macd_hist'] = macd[f'MACDh_{self.fast}_{self.slow}_{self.signal}']
         frame['macd_hist_sh1'] = frame['macd_hist'].shift(1)
         return frame

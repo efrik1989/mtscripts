@@ -15,12 +15,14 @@ logger=app_logger.get_logger(__name__)
 
 # Класс описывающий поведение стратегии(Покупка\Продажа) с Bollingers_bands
 # MACD("MACD", None, 8, 17, 9) еще раздумываю добавить ли индикатор в стратегию
+# MACD оп умолчаниню 12, 26, 9 
 class Strategy_BB(Strategy):
         def __init__(self, period, rsi_open, adx_open, open_triger: str, close_triger: str):
                 super().__init__(period)
                 self.indicators = [Bollinger('BB', period), 
                                    RSI("RSI", 14, True), 
-                                   MACD('MACD', 12, 12, 26, 9), 
+                                   # MACD изначальные параметры 12, 26, 9
+                                   MACD('MACD', 12, 8, 21, 5), 
                                    ADX('ADX', 14), 
                                    ATR("ATR", 14), MA("EMA", 200, "ema")]
                 self.rsi_open = rsi_open
@@ -49,15 +51,19 @@ class Strategy_BB(Strategy):
             # Условие Б: Сильный тренд, где MACD можно игнорировать
             condition_strong_trend = (frame['ADX'] >= 25)
             # Вариант 4: Результат: отсеклась львиная часть сделок, на некоторыхх инструментах повысилась эффективность. Но прибыль рухнула в 3 раза.
-            # condition_ema_filter = (frame['close'] > frame['EMA'])
+            condition_ema_filter = (frame['close'] > frame['EMA'])
             # open rsi < 45, adx >18
+
+            # TODO: Возможно стоит разделить сигналы. Одни будут стрелять для трендовой торговли другие в боковике или около того.
             
 
             conditions = [
                 (frame[self.open_triger] <= frame['BBL_20_2.0_2.0']) & 
-                (frame['RSI'] < self.rsi_open) & 
+                (frame['RSI'] < self.rsi_open) &
                 (frame['ADX'] > self.adx_open) &
-                (condition_macd_confirm | condition_strong_trend),
+                # condition_ema_filter &
+                (condition_macd_confirm | condition_strong_trend)
+                ,
                 (frame['high'] >= frame['BBU_20_2.0_2.0']) & 
                 (frame['RSI'] > 75) & 
                 (frame['ADX'] > 18) &
@@ -76,13 +82,11 @@ class Strategy_BB(Strategy):
                       (frame['macd_hist'] > 0)
             
             conditions = [
-                # Попытка отключить Close_buy и проверить как себя поведет стратегия в симуляции
-                # (0 > 2)
-                (frame['close'] >= frame[f'{self.close_triger}_20_2.0_2.0']) &
-                (frame['macd_hist'] < frame['macd_hist_sh1']) &
+                (frame['close'] >= frame['BBM_20_2.0_2.0'])
                 # Условия ниже нужны. но нужно доработать адаптивность TP и трэйлинг-стоп по ATR.
-                (frame['ADX'] < 30)
                 # ~(condition_macd_hold | condition_rsi_momentum)
+
+                # (frame['macd_hist'] < frame['macd_hist_sh1'])
                 ,
                 (frame['close'] <= frame['BBM_20_2.0_2.0']) & (frame['ADX'] < 25)
                 ]
