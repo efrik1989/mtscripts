@@ -28,7 +28,7 @@ class Historic_mode(Mode):
             if (signal == "Open_buy" or (gv.global_args.buy_sell == True and signal == "Open_sell")):
                 logger.info(str(symbol) + ": Signal to open position find: " + signal)
                 # if risk_manager.is_tradable():
-                self.order = Order(current_price, symbol, atr_value, isBuy= True if signal == "Open_buy" else False)
+                self.order = Order(current_price, symbol, self.strategy, atr_value, isBuy= True if signal == "Open_buy" else False)
                 self.order.open_fake_position()
                 self.orders_count += 1
                 self.frame = self.position_id_in_frame(self.order, self.frame, self.is_order_open)
@@ -47,7 +47,7 @@ class Historic_mode(Mode):
     def sl_tp_checker(self, symbol, frame,  index):
         super().sl_tp_checker()
         if (type(self.order) == Order):
-            logger.debug("Order to close by SLTP: " + str(self.order.id) + "SLTP: " + str(self.order.take_profit) + " " + str(self.order.stop_loss))
+            logger.debug(f"Order check to close by SLTP: {self.order.id}: TP: {self.order.take_profit}, SL: {self.order.stop_loss}")
             isSL = frame['low'] <= self.order.stop_loss and frame['high'] >= self.order.stop_loss
             isTP = frame['low'] <= self.order.take_profit and frame['high'] >= self.order.take_profit
             logger.debug("Order to close by SLTP: " + str(self.order.id) + " В диапазлне: " + str(isTP) + " " + str(isSL))
@@ -77,13 +77,26 @@ class Historic_mode(Mode):
                 # Кусок кода ниже можно передавать как аргумемнт...
                 self.order.fake_traling_stop(current_price, gv.global_args.trailing_stop)
 
+    # Функция dynamic_take_profit
+    def dynamic_tp_checker(self, new_tp):
+        super().dynamic_tp_checker()
+        if type(self.order) == Order and gv.global_args.dynamic_take_profit:
+            self.order.fake_set_new_take_profit(new_tp)
+            logger.debug(f"Order to change TP: {self.order.id}, значение:  {new_tp}")
+            
+                
+
     def signals_handler(self, symbol, signal, atr_value, close_signal, frame, index):
         super().signals_handler()
-        
+        self.strategy.sltp_startegy(frame)
         try:      
             self.open_position_signal_checker(symbol, frame['close'], signal, atr_value)
 
             self.trailing_stop_checker(frame, index)
+
+            self.dynamic_tp_checker(self.strategy.take_profit)
+
+            self.position_id_in_frame(self.order, self.frame, index)
 
             self.sl_tp_checker(symbol, frame, index)
             
@@ -149,26 +162,23 @@ class Historic_mode(Mode):
     def set_finish_resume(self, symbol, frame: pd.DataFrame):
         # file_name = "analis_result.txt"
 
-        self.close_open_positions(frame['close'], symbol)
-        """
-        output_file = open(gv.global_args.logs_directory + "\\" + gv.global_args.monney_mode + "\\" + file_name, "a")
-        output_file.write(symbol + "\n" \
-                            "Количество сделок: " + str(self.orders_count) + "\n" \
-                            "Доход со сделок: " + str(self.get_profit_sum()) + "\n" \
-                            "Количество прибыльных сделок: " + str(self.profit_orders_count) + "\n" \
-                            "Эффективность стратегии: " + str(self.get_efficiency()) + "\n") 
-        output_file.close()
-        """
+        self.write_in_excell(symbol, self.frame)
 
-        # Тут забил в enum только
+        self.close_open_positions(frame['close'], symbol)
+        pft = self.get_profit_sum()
+        lot = Lot[symbol].value
+        finish_profit = pft*lot
+        # Тут забил в enum только голубые фишки
         data = {'symbol' : symbol, \
                 'deals_count' : self.orders_count, \
-                'profit' : self.get_profit_sum(), \
+                'profit' : pft, \
                 'profit_deals' : self.profit_orders_count, \
                 'efficiency' : self.get_efficiency(), \
-                'lot' : Lot[symbol].value, \
-                'last_price' : frame['close']    }
+                'lot' : lot, \
+                'last_price' : frame['close'], \
+                'finish_profit' : finish_profit, \
+                'profit-commision' : finish_profit - ((frame['close'] * 0.0657 / 100) * self.orders_count)            }
         
         queue.set_data_to_queue(data)
-        print("Processing finished.")
+        print(f"{symbol}: Processing finished.")
         exit(0)

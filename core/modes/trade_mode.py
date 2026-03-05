@@ -22,7 +22,7 @@ class Trade_mode(Mode):
                 logger.info(str(symbol) + ": Signal to open position find: " + signal)
                 if self.risk_manager.is_tradable(force_update=True):
                     logger.info("Risk manager checker: Ok.")
-                    self.order = Order(current_price, symbol, atr_value, isBuy= True if signal == "Open_buy" else False)
+                    self.order = Order(current_price, symbol, self.strategy, atr_value, isBuy= True if signal == "Open_buy" else False)
                     self.order.open_position()
                     self.locker.is_bar_locked = True
                     # self.frame = self.position_id_in_frame(self.order, self.frame, self.is_order_open)
@@ -35,6 +35,13 @@ class Trade_mode(Mode):
             self.order.close_position()
             self.order = None
 
+    # Функция dynamic_take_profit
+    def dynamic_tp_checker(self, new_tp):
+        super().dynamic_tp_checker()
+        if type(self.order) == Order and gv.global_args.dynamic_take_profit:
+            self.order.fake_set_new_take_profit(new_tp)
+            logger.debug(f"Order to change TP: {self.order.id}, значение:  {new_tp}")
+
     # Функция Trailing stop
     def trailing_stop_checker(self, current_price):
         super().trailing_stop_checker()
@@ -45,6 +52,8 @@ class Trade_mode(Mode):
         super().signals_handler()
         try:      
             if not self.locker.is_bar_locked:
+
+                self.dynamic_tp_checker(self.strategy.take_profit)
 
                 self.close_position_signal_checker(symbol, close_signal)
 

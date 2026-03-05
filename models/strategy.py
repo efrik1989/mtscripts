@@ -12,6 +12,8 @@ class Strategy():
     def __init__(self, period):
         self.period = period
         self.indicators = []
+        self.take_profit = None
+        self.stop_loss = None
 
     def update_values(self, symbol, frame, last_bar_frame):
         try:    
@@ -35,4 +37,8 @@ class Strategy():
     
     @abstractmethod
     def close_strategy(self, frame):
+        pass
+
+    @abstractmethod
+    def sltp_startegy(self, frame):
         pass
