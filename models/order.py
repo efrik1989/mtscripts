@@ -105,10 +105,11 @@ class Order():
         order_type = None
         new_value = None
         point=mt5.symbol_info(self.symbol).point
-        position = pd.DataFrame(mt5.positions_get(self.symbol))
+        current_position = mt5.positions_get(symbol=self.symbol)
+        position = pd.DataFrame(list(current_position),columns=current_position[0]._asdict().keys())
         # Вот тут дыра конечно... т.к. список может прийти с несколькими позициями.
         #  Чисто теоретически если будет 1 позиция на символ, то должно рабоать корректно.
-        self.stop_loss = pd.to_numeric(position['sl'])[-1]
+        self.stop_loss = pd.to_numeric(position['sl'])[0]
         if self.isBuy:
             new_value = current_price - self.stop_atr
             isNeedToMoveSL = (self.stop_loss + indent * point) <= current_price
@@ -147,10 +148,11 @@ class Order():
     def set_new_take_profit(self, current_price, new_tp):
         if new_tp != None or new_tp != "":
             order_type = None
-            position = pd.DataFrame(mt5.positions_get(self.symbol))
+            current_position = mt5.positions_get(symbol=self.symbol)
+            position = pd.DataFrame(list(current_position),columns=current_position[0]._asdict().keys())
             # Вот тут дыра конечно... т.к. список может прийти с несколькими позициями.
             #  Чисто теоретически если будет 1 позиция на символ, то должно рабоать корректно.
-            self.take_profit = pd.to_numeric(position['tp'])[-1]
+            self.take_profit = pd.to_numeric(position['tp'])[0]
             if self.isBuy:
                 order_type = mt5.ORDER_TYPE_BUY
             else:
