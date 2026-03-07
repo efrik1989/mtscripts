@@ -39,13 +39,13 @@ class Trade_mode(Mode):
     def dynamic_tp_checker(self, new_tp):
         super().dynamic_tp_checker()
         if type(self.order) == Order and gv.global_args.dynamic_take_profit:
-            self.order.fake_set_new_take_profit(new_tp)
+            self.order.set_new_take_profit(new_tp)
             logger.debug(f"Order to change TP: {self.order.id}, значение:  {new_tp}")
 
     # Функция Trailing stop
     def trailing_stop_checker(self, current_price):
         super().trailing_stop_checker()
-        if type(self.order) == Order and gv.global_args.trailing_stop != 0:
+        if self.order is not None and gv.global_args.trailing_stop != 0:
             self.order.traling_stop(current_price, gv.global_args.trailing_stop)
 
     def signals_handler(self, symbol, current_price, signal, atr_value, close_signal):
@@ -53,13 +53,13 @@ class Trade_mode(Mode):
         try:      
             if not self.locker.is_bar_locked:
 
+                self.trailing_stop_checker(current_price)
+
                 self.dynamic_tp_checker(self.strategy.take_profit)
 
                 self.close_position_signal_checker(symbol, close_signal)
 
                 self.open_position_signal_checker(symbol, current_price, signal, atr_value)
-
-                self.trailing_stop_checker(current_price)
 
         except(UnboundLocalError):
             logger.exception(str(symbol) + ": lets_trade(): Переменная или объект не в том месте.!!!")

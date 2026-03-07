@@ -146,7 +146,10 @@ class Mode():
             return None
         
     def write_in_excell(self, symbol, frame):
-        frame.to_excel(f"{gv.global_args.logs_directory}\\frames\\out_{symbol}_{gv.global_args.strategy}_frame_signal_test.xlsx")
+        # convert time in seconds into the 'datetime' format
+        df = pd.DataFrame(frame)
+        df['time']=pd.to_datetime(df['time'], unit='s')
+        df.to_excel(f"{gv.global_args.logs_directory}\\frames\\out_{symbol}_{gv.global_args.strategy}_frame_signal_test.xlsx")
         logger.info(f"{str(symbol)}: Frames update complete. Frame in: {gv.global_args.logs_directory}\\frames\\out_{symbol}_{gv.global_args.strategy}_frame_signal_test.xlsx to manual analis.")
         
     def close_position_by_sltp(self, symbol, current_price):
