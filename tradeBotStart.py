@@ -71,12 +71,17 @@ def commands_handler():
         while True:
             command = input()
             if command == "exit":
+                print("Exit from programm.")
                 logger.info("Exit from programm.")
                 break
             else:
                 print("Please enter correct command.")
+    except(KeyboardInterrupt):
+        print("Exit form programm")
+        logger.warning("Ошибка при работе с вводом! Экстренное завершение программы.")
     except Exception as e:
-        logger.warning("Ошибка при работе с вводом! Экстренное завершение программы.")    
+        logger.error("Не предвиденная ошибка при работе с вводом! Экстренное завершение программы.")
+        sys.exit(1)    
 
 def startRobot():
     logger.info("-----------------------Start new session----------------------")

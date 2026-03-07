@@ -105,8 +105,11 @@ class Order():
         order_type = None
         new_value = None
         point=mt5.symbol_info(self.symbol).point
-        current_position = mt5.positions_get(symbol=self.symbol)
-        position = pd.DataFrame(list(current_position),columns=current_position[0]._asdict().keys())
+        try:
+            current_position = mt5.positions_get(symbol=self.symbol)
+            position = pd.DataFrame(list(current_position),columns=current_position[0]._asdict().keys())
+        except(Exception):
+            logger.exception("Ошибка при получении информации о позиции.")
         # Вот тут дыра конечно... т.к. список может прийти с несколькими позициями.
         #  Чисто теоретически если будет 1 позиция на символ, то должно рабоать корректно.
         self.stop_loss = pd.to_numeric(position['sl'])[0]
@@ -148,8 +151,12 @@ class Order():
     def set_new_take_profit(self, current_price, new_tp):
         if new_tp != None or new_tp != "":
             order_type = None
-            current_position = mt5.positions_get(symbol=self.symbol)
-            position = pd.DataFrame(list(current_position),columns=current_position[0]._asdict().keys())
+            
+            try:
+                current_position = mt5.positions_get(symbol=self.symbol)
+                position = pd.DataFrame(list(current_position),columns=current_position[0]._asdict().keys())
+            except(Exception):
+                logger.exception("Ошибка при получении информации о позиции.")
             # Вот тут дыра конечно... т.к. список может прийти с несколькими позициями.
             #  Чисто теоретически если будет 1 позиция на символ, то должно рабоать корректно.
             self.take_profit = pd.to_numeric(position['tp'])[0]
