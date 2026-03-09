@@ -431,8 +431,10 @@ class Trade(trade.Trade):
         """
         logger.info(f'{self.symbol}: Calls Metatrader5 to check if there is a position opened.')
         result = Mt5.positions_get(symbol=self.symbol)
+        isOpen = False
         if len(result) > 0:
             logger.info(f'{self.symbol}: There is a position opened.')
+            isOpen = True
             if result[0].type == 0:  # if buy
                 logger.info(f'{self.symbol}: Set the trade direction to BUY')
                 self.trade_direction = 'buy'
@@ -444,3 +446,5 @@ class Trade(trade.Trade):
             logger.info(f'{self.symbol}: There are no position opened.')
             logger.info(f'{self.symbol}: Set the trade direction to None')
             self.trade_direction = None
+            isOpen = False
+        return isOpen

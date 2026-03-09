@@ -1,5 +1,6 @@
 from pandas.plotting import register_matplotlib_converters
 from models.order import Order
+import time
 
 register_matplotlib_converters()
 
@@ -23,8 +24,9 @@ class Trade_mode(Mode):
                 if self.risk_manager.is_tradable(force_update=True):
                     logger.info("Risk manager checker: Ok.")
                     self.order = Order(current_price, symbol, self.strategy, atr_value, isBuy= True if signal == "Open_buy" else False)
-                    self.order.open_position()
-                    self.locker.is_bar_locked = True
+                    self.open_n_check(0)
+                    # self.order.open_position()
+                    # self.locker.is_bar_locked = True
                     # self.frame = self.position_id_in_frame(self.order, self.frame, self.is_order_open)
 
     # Проверка закрытия сделки buy
@@ -66,4 +68,16 @@ class Trade_mode(Mode):
                     
     def sl_tp_checker():
         pass
+
+    def open_n_check(self, count):
+        if count == 2:
+            self.order = None
+            return
+        if not self.order.position_check():
+            self.order.open_position()
+            count += 1
+            self.open_n_check(count)
+        else:
+            self.locker.is_bar_locked = True
+            return
 
