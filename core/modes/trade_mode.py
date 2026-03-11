@@ -70,10 +70,11 @@ class Trade_mode(Mode):
         pass
 
     def open_n_check(self, count):
-        if count == 2:
+        if count == 1:
             self.order = None
             return
         if not self.order.position_check():
+            self.order.open_price = self.get_current_price()
             self.order.open_position()
             count += 1
             self.open_n_check(count)

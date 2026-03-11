@@ -67,7 +67,7 @@ class Mode():
             signal = self.get_last_column_value(self.frame, 'signal')
             close_signal = self.get_last_column_value(self.frame, 'close_signal')
             atr_value = float(self.get_last_column_value(self.frame, 'ATR'))    
-            current_price = mt5_a.get_price(self.tick_obj)
+            current_price = self.get_current_price()
             # Отладочный 
             # signal = "Open_buy"
             # close_signal = "Close_buy"
@@ -156,6 +156,10 @@ class Mode():
         logger.info(str(symbol) + ": Signal to close position find: SLTP")
         self.profit += self.order.fake_buy_sell_close(current_price)
         self.order = None
+
+    def get_current_price(self):
+        current_price = mt5_a.get_price(self.tick_obj)
+        return current_price
     
     @abstractmethod
     def close_position_signal_checker(self):
