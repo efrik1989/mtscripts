@@ -1,6 +1,7 @@
 from enum import Enum
 from strategies.str_bollingers_band import Strategy_BB as BB
 from strategies.str_ma_50 import Strategy_MA_50 as MA_50
+from strategies.str_macd import Strategy_MACD as MACD
 
 class Strategy(Enum):
     BB_RSI_45_18_close_BBM = BB(20, 45, 18, 'close', 'BBM')
@@ -39,4 +40,8 @@ class Strategy(Enum):
     BB_RSI_40_15_low_BBU = BB(20, 40, 15, 'low', 'BBU')
     BB_RSI_35_15_low_BBU = BB(20, 35, 15, 'low', 'BBU')
     BB_RSI_30_15_low_BBU = BB(20, 30, 15, 'low', 'BBU')
+    # Параметры получены через скрипт param_research_optuna.py
+    # TODO: Стоит проверить вариант с закрытием сделки на BBM 
+    BB_RSI_36_17_close_BBU = BB(16, 36, 17, 'close', 'BBU')
     MA_50_RSI = MA_50(50)
+    #MACD_RSI = MACD()

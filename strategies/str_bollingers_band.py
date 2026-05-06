@@ -12,59 +12,43 @@ from indicators.ma import MA
 import core.app_logger as app_logger
 logger=app_logger.get_logger(__name__)
 
-
+# TODO: Стратегию есть куда улучшить!!!
+# Есть идея отсекать или как-то помечать тренды, чтобы не открывать сделки в противоположный тренд.
+# Или не открывать сделки при сильном тренде, а только в период консолидации и на проколах. 
+#  
 # Класс описывающий поведение стратегии(Покупка\Продажа) с Bollingers_bands
-# MACD("MACD", None, 8, 17, 9) еще раздумываю добавить ли индикатор в стратегию
-# MACD оп умолчаниню 12, 26, 9 
 class Strategy_BB(Strategy):
         def __init__(self, period, rsi_open, adx_open, open_triger: str, close_triger: str):
                 super().__init__(period)
-                self.indicators = [Bollinger('BB', period), 
-                                   RSI("RSI", 14, True), 
+                self.indicators = [Bollinger("BB", period), 
+                                   RSI("RSI", 11, True), 
                                    # MACD изначальные параметры 12, 26, 9
                                    MACD('MACD', 12, 8, 21, 5), 
-                                   ADX('ADX', 14), 
+                                   ADX('ADX', 16), 
                                    ATR("ATR", 14), MA("EMA", 200, "ema")]
                 self.rsi_open = rsi_open
                 self.adx_open = adx_open
                 self.open_triger = open_triger
                 self.close_triger = close_triger
 
-
-        # TODO: Прописать суммарные сигналы для BB, MACD, RSI   
         # Проставление сигналов открытия сделок
         def open_strategy(self, frame):
             logger.info("BB strategy: start frame analis...")
 
-            # frame['atr_ma'] = frame['ATR'].rolling(window=100).mean()
-            # volatility_filter = frame['ATR'] > frame['atr_ma']
-                
-            
-            # ADX '(frame['ADX'] > 18)' заменяем на 'ATR frame['ATR'] > frame['atr_ma']'
-            # MACD long (frame['macd_hist'] > frame['macd_hist_sh1']) short (frame['macd_hist'] < frame['macd_hist_sh1'])
-            #Вариант 2. Long - RSI < 45 & ADX > 15 & (frame['macd_hist'] > frame['macd_hist_sh1']) 65% эффективности.
-            #Вариант 3. (пока фаворит) 64,6% эффективности, но сделок больше в 2 раза.
-            condition_macd_confirm = (frame['ADX'] >= 15) & \
+            condition_macd_confirm = (frame['ADX'] >= 17) & \
                          (frame['ADX'] < 25) & \
                          (frame['macd_hist'] > frame['macd_hist_sh1'])
 
-            # Условие Б: Сильный тренд, где MACD можно игнорировать
             condition_strong_trend = (frame['ADX'] >= 25)
-            # Вариант 4: Результат: отсеклась львиная часть сделок, на некоторыхх инструментах повысилась эффективность. Но прибыль рухнула в 3 раза.
-            condition_ema_filter = (frame['close'] > frame['EMA'])
-            # open rsi < 45, adx >18
-
-            # TODO: Возможно стоит разделить сигналы. Одни будут стрелять для трендовой торговли другие в боковике или около того.
             
-
             conditions = [
-                (frame[self.open_triger] <= frame['BBL_20_2.0_2.0']) & 
+                (frame[self.open_triger] <= frame['BBL_16_2.0_2.0']) & 
                 (frame['RSI'] < self.rsi_open) &
                 (frame['ADX'] > self.adx_open) &
                 # condition_ema_filter &
                 (condition_macd_confirm | condition_strong_trend)
                 ,
-                (frame['high'] >= frame['BBU_20_2.0_2.0']) & 
+                (frame['high'] >= frame['BBU_16_2.0_2.0']) & 
                 (frame['RSI'] > 75) & 
                 (frame['ADX'] > 18) &
                 (frame['macd_hist'] < frame['macd_hist_sh1'])]
@@ -74,33 +58,22 @@ class Strategy_BB(Strategy):
         
         # Проставление сигналов закрытия сделок
         def close_strategy(self, frame):
-            # Выход.
-            # Вариант 1:
-            # TODO: [Priority: 1]Допилить стратегию выхода
-            condition_rsi_momentum = (frame['RSI'] >= 60) & (frame['RSI'] < 70)
-            condition_macd_hold = (frame['macd_hist'] > frame['macd_hist_sh1']) | \
-                      (frame['macd_hist'] > 0)
-            
             conditions = [
-                (frame['close'] >= frame['BBM_20_2.0_2.0'])
-                # Условия ниже нужны. но нужно доработать адаптивность TP и трэйлинг-стоп по ATR.
-                # ~(condition_macd_hold | condition_rsi_momentum)
-
-                # (frame['macd_hist'] < frame['macd_hist_sh1'])
-                ,
-                (frame['close'] <= frame['BBM_20_2.0_2.0']) & (frame['ADX'] < 25)
+                (frame['close'] >= frame['BBM_16_2.0_2.0']),
+                (frame['close'] <= frame['BBM_16_2.0_2.0']) & (frame['ADX'] < 25)
                 ]
             chois = ["Close_buy", "Close_sell"]
             frame['close_signal'] = np.select(conditions, chois, default="NaN")
 
             logger.info("strategy: Analis complete.")
             return frame
-            
+        
+        # Помечаем значения SLTP для данной стратегии    
         def sltp_startegy(self, frame: pd.DataFrame):
             super().sltp_startegy(frame)
             df = frame.tail(1)
             try:
-                self.stop_loss = df['BBM_20_2.0_2.0'].item()
-                self.take_profit = df['BBU_20_2.0_2.0'].item()
+                self.stop_loss = df['BBM_16_2.0_2.0'].item()
+                self.take_profit = df['BBU_16_2.0_2.0'].item()
             except:
                  logger.warning("Нет значенийй BBM/BBU.")

@@ -12,3 +12,6 @@ TA-Lib
 matplotlib
 openpyxl
 rich
+moexalgo
+optuna
+pyarrow
