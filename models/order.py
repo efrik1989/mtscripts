@@ -102,8 +102,9 @@ class Order():
             output_file.close()
     
     def traling_stop(self, current_price, indent):
+        if indent == "atr": indent = self.stop_atr
         self.trade_obj.check_and_update_trailing(self.symbol, indent, self.START_TRAILING)
-        """if indent == "atr": indent = self.stop_atr
+        """
         isNeedToMoveSL = None
         order_type = None
         new_value = None
