@@ -1,5 +1,6 @@
 from pandas.plotting import register_matplotlib_converters
 from models.order import Order
+from mt5.mt5_actions import MT5_actions as mt5_a  
 import time
 
 register_matplotlib_converters()
@@ -18,7 +19,8 @@ class Trade_mode(Mode):
     # Открытие позиции
     def open_position_signal_checker(self, symbol, current_price, signal, atr_value):
         super().open_position_signal_checker()
-        if type(self.order) != Order:
+        if self.order is None:
+            logger.info(f"{symbol}: Order is not opened: {self.order}")
             if (signal == "Open_buy" or (gv.global_args.buy_sell == True and signal == "Open_sell")):
                 logger.info(str(symbol) + ": Signal to open position find: " + signal)
                 if self.risk_manager.is_tradable(force_update=True):
@@ -63,6 +65,8 @@ class Trade_mode(Mode):
 
                 self.open_position_signal_checker(symbol, current_price, signal, atr_value)
 
+                self.check_opened_positions(symbol)
+
         except(UnboundLocalError):
             logger.exception(str(symbol) + ": lets_trade(): Переменная или объект не в том месте.!!!")
                     
@@ -82,3 +86,8 @@ class Trade_mode(Mode):
             self.locker.is_bar_locked = True
             return
 
+    def check_opened_positions(self, symbol):
+        position = mt5_a.get_position_info(symbol)
+        if position is None or len(position) == 0:
+            self.order = None
+            return

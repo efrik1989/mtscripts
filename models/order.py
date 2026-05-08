@@ -1,6 +1,7 @@
 import time
 import MetaTrader5 as mt5
 import core.mt5.mt5_trade as trade
+import core.mt5.mt5_actions as mt5_a
 import pandas as pd
 import core.global_vars as gv
 import core.app_logger as app_logger
@@ -13,6 +14,7 @@ logger=app_logger.get_logger(__name__)
 class Order():
 
     def __init__(self, open_price, symbol, strategy, atr_value: float, isBuy: bool):
+        self.START_TRAILING = atr_value
         self.open_price = open_price    # Цена открытия сделки.
         self.symbol = symbol
         self.stop_atr = atr_value * 2.5
@@ -80,7 +82,7 @@ class Order():
         
     
     # TODO: Priority: 1 [general\sim]Реализовать трэйлинг стоп
-    #  аргумент теукщая цена. Если цена увеличилась на фиксированое значение(значение или % тут надо подумать), то сдвигаем стоп лосс.
+    #  аргумент текущая цена. Если цена увеличилась на фиксированое значение(значение или % тут надо подумать), то сдвигаем стоп лосс.
     def fake_traling_stop(self, current_price, indent):
         if indent == "atr": indent = self.stop_atr
         isNeedToMoveSL = None
@@ -100,16 +102,14 @@ class Order():
             output_file.close()
     
     def traling_stop(self, current_price, indent):
-        if indent == "atr": indent = self.stop_atr
+        self.trade_obj.check_and_update_trailing(self.symbol, indent, self.START_TRAILING)
+        """if indent == "atr": indent = self.stop_atr
         isNeedToMoveSL = None
         order_type = None
         new_value = None
+        # TODO: Все действия с mt5 надо в отдельный файл
         point=mt5.symbol_info(self.symbol).point
-        try:
-            current_position = mt5.positions_get(symbol=self.symbol)
-            position = pd.DataFrame(list(current_position),columns=current_position[0]._asdict().keys())
-        except(Exception):
-            logger.exception("Ошибка при получении информации о позиции.")
+        position = mt5_a.get_position_info(self.symbol)
         # Вот тут дыра конечно... т.к. список может прийти с несколькими позициями.
         #  Чисто теоретически если будет 1 позиция на символ, то должно рабоать корректно.
         self.stop_loss = pd.to_numeric(position['sl'])[0]
@@ -142,7 +142,7 @@ class Order():
         else:
             # request the result as a dictionary and display it element by element
             result_dict=result._asdict()
-            logger.info("Value of Stop Loss is changed. SL = " + str(result_dict.get('sl')))
+            logger.info("Value of Stop Loss is changed. SL = " + str(result_dict.get('sl')))"""
            
     def fake_set_new_take_profit(self, new_tp):
         if new_tp != None or new_tp != "":
@@ -152,13 +152,7 @@ class Order():
         if new_tp != None or new_tp != "":
             order_type = None
             
-            try:
-                current_position = mt5.positions_get(symbol=self.symbol)
-                position = pd.DataFrame(list(current_position),columns=current_position[0]._asdict().keys())
-            except(Exception):
-                logger.exception("Ошибка при получении информации о позиции.")
-            # Вот тут дыра конечно... т.к. список может прийти с несколькими позициями.
-            #  Чисто теоретически если будет 1 позиция на символ, то должно рабоать корректно.
+            position = mt5_a.get_position_info(self.symbol)
             self.take_profit = pd.to_numeric(position['tp'])[0]
             if self.isBuy:
                 order_type = mt5.ORDER_TYPE_BUY

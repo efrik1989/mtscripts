@@ -76,3 +76,12 @@ class MT5_actions():
         # BUG: По какой-то причине ticks оказывается пустым... Разбираемся.
         ticks = mt5.copy_ticks_range(symbol, start_period, end_period, mt5.COPY_TICKS_INFO)  
         return ticks
+    
+    # Получение позиции инструмента
+    def get_position_info(symbol):
+        try:
+            current_position = mt5.positions_get(symbol=symbol)
+            position = pd.DataFrame(list(current_position),columns=current_position[0]._asdict().keys())
+            return position
+        except(Exception):
+            logger.exception("Ошибка при получении информации о позиции.")

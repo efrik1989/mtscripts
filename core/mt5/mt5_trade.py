@@ -448,3 +448,76 @@ class Trade(trade.Trade):
             self.trade_direction = None
             isOpen = False
         return isOpen
+
+    def check_and_update_trailing(self, symbol, trailing_points, min_profit_points):
+        """
+        Проверяет все открытые позиции по символу и обновляет Stop Loss.
+        trailing_points: дистанция трейлинга от текущей цены (в пунктах).
+        min_profit_points: минимальная прибыль в пунктах для активации трейлинга.
+        """
+        # Получаем информацию о свойствах символа (размер пункта)
+        symbol_info = Mt5.symbol_info(symbol)
+        if symbol_info is None:
+            return
+        
+        point = symbol_info.point
+        
+        # Получаем текущие открытые позиции по инструменту
+        positions = Mt5.positions_get(symbol=symbol)
+        if positions is None or len(positions) == 0:
+            return
+
+        for pos in positions:
+            pos_id = pos.ticket
+            pos_type = pos.type
+            open_price = pos.price_open
+            current_sl = pos.sl
+            
+            # Получаем актуальные цены Ask и Bid
+            tick = Mt5.symbol_info_tick(symbol)
+            if tick is None:
+                continue
+                
+            current_bid = tick.bid
+            current_ask = tick.ask
+
+            # Логика для BUY позиций
+            if pos_type == Mt5.POSITION_TYPE_BUY:
+                # Текущая прибыль в пунктах
+                profit_points = (current_bid - open_price) / point
+                
+                if profit_points >= min_profit_points:
+                    # Рассчитываем новый уровень Stop Loss
+                    new_sl = round(current_bid - (trailing_points * point), symbol_info.digits)
+                    
+                    # Сдвигаем SL только если он выше старого (или старого SL нет)
+                    if current_sl == 0 or new_sl > current_sl:
+                        self.modify_position_sl(pos_id, new_sl, pos.tp)
+
+            # Логика для SELL позиций
+            elif pos_type == Mt5.POSITION_TYPE_SELL:
+                # Текущая прибыль в пунктах
+                profit_points = (open_price - current_ask) / point
+                
+                if profit_points >= min_profit_points:
+                    # Рассчитываем новый уровень Stop Loss
+                    new_sl = round(current_ask + (trailing_points * point), symbol_info.digits)
+                    
+                    # Сдвигаем SL только если он ниже старого (или старого SL нет)
+                    if current_sl == 0 or new_sl < current_sl:
+                        self.modify_position_sl(pos_id, new_sl, pos.tp)
+
+    def modify_position_sl(self, position_ticket, new_sl, tp):
+        """Отправляет запрос на модификацию Stop Loss позиции"""
+        request = {
+            "action": Mt5.TRADE_ACTION_SLTP,
+            "position": position_ticket,
+            "sl": new_sl,
+            "tp": tp
+        }
+        result = Mt5.trade_send(request)
+        if result.retcode != Mt5.TRADE_RETCODE_DONE:
+            print(f"Ошибка модификации Трала для #{position_ticket}: {result.comment}")
+        else:
+            print(f"Трейлинг-стоп активирован. Позиция #{position_ticket} новый SL: {new_sl}")
+
