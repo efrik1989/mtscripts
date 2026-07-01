@@ -1,7 +1,7 @@
 import time
 import MetaTrader5 as mt5
 import core.mt5.mt5_trade as trade
-import core.mt5.mt5_actions as mt5_a
+from core.mt5.mt5_actions import MT5_actions as mt5_a
 import pandas as pd
 import core.global_vars as gv
 import core.app_logger as app_logger
@@ -68,14 +68,12 @@ class Order():
 
     def open_position(self):
         try:
-            logger.info("Order.id = " + str(self.id))
             self.trade_obj.position_open(self.isBuy, not self.isBuy)
         except:
             logger.error(f"{self.symbol}: Somthing went wrong to open position!!!")
 
     def close_position(self):
         try:
-            logger.info("Order.id = " + str(self.id))
             self.trade_obj.position_close()
         except:
             logger.error(f"{self.symbol}: Somthing went wrong to close position!!!")
@@ -104,52 +102,13 @@ class Order():
     def traling_stop(self, current_price, indent):
         if indent == "atr": indent = self.stop_atr
         self.trade_obj.check_and_update_trailing(self.symbol, indent, self.START_TRAILING)
-        """
-        isNeedToMoveSL = None
-        order_type = None
-        new_value = None
-        # TODO: Все действия с mt5 надо в отдельный файл
-        point=mt5.symbol_info(self.symbol).point
-        position = mt5_a.get_position_info(self.symbol)
-        # Вот тут дыра конечно... т.к. список может прийти с несколькими позициями.
-        #  Чисто теоретически если будет 1 позиция на символ, то должно рабоать корректно.
-        self.stop_loss = pd.to_numeric(position['sl'])[0]
-        if self.isBuy:
-            new_value = current_price - self.stop_atr
-            isNeedToMoveSL = (self.stop_loss + indent * point) <= current_price
-            order_type = mt5.ORDER_TYPE_BUY
-        else:
-            new_value = current_price + self.stop_atr
-            isNeedToMoveSL = (self.stop_loss - indent * point) >= current_price
-            order_type = mt5.ORDER_TYPE_SELL
-        if isNeedToMoveSL: self.stop_loss = new_value
-        
-        request = {
-            "action": mt5.TRADE_ACTION_SLTP,
-            "symbol": self.symbol,
-            "volume": 1.0,
-            "type": order_type,
-            "price": current_price,
-            "sl": self.stop_loss,
-            "magic": 7777,
-           "comment": "trailing stop, python",
-            "type_time": mt5.ORDER_TIME_GTC,
-            "type_filling": mt5.ORDER_FILLING_RETURN,
-        }
-        result=mt5.order_send(request)
-        if result.retcode != mt5.TRADE_RETCODE_DONE:
-            logger.error("4. order_send failed, retcode={}".format(result.retcode))
-            logger.error("   result",result)
-        else:
-            # request the result as a dictionary and display it element by element
-            result_dict=result._asdict()
-            logger.info("Value of Stop Loss is changed. SL = " + str(result_dict.get('sl')))"""
+        logger.info(f"{self.symbol}: positions info:{mt5_a.get_position_info(self.symbol)}")
            
     def fake_set_new_take_profit(self, new_tp):
         if new_tp != None or new_tp != "":
             self.take_profit = new_tp
 
-    def set_new_take_profit(self, current_price, new_tp):
+    def set_new_take_profit(self, new_tp):
         if new_tp != None or new_tp != "":
             order_type = None
             
@@ -166,7 +125,6 @@ class Order():
                 "symbol": self.symbol,
                 "volume": 1.0,
                 "type": order_type,
-                "price": current_price,
                 "tp": self.take_profit,
                 "magic": 7777,
             "comment": "dynamic TP, python",
@@ -174,12 +132,13 @@ class Order():
                 "type_filling": mt5.ORDER_FILLING_RETURN,
             }
             result=mt5.order_send(request)
+            # request the result as a dictionary and display it element by element
+            result_dict=result._asdict()
             if result.retcode != mt5.TRADE_RETCODE_DONE:
                 logger.error("4. order_send failed, retcode={}".format(result.retcode))
-                logger.error("   result",result)
+                logger.error(f"   result: {result_dict}")
             else:
-                # request the result as a dictionary and display it element by element
-                result_dict=result._asdict()
+                
                 logger.info("Value of Take Profit is changed. TP = " + str(result_dict.get('tp')))
 
     def to_string(self):

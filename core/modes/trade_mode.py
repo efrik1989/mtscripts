@@ -20,13 +20,13 @@ class Trade_mode(Mode):
     def open_position_signal_checker(self, symbol, current_price, signal, atr_value):
         super().open_position_signal_checker()
         if self.order is None:
-            logger.info(f"{symbol}: Order is not opened: {self.order}")
+            logger.debug(f"{symbol}: Order is not opened: {self.order}")
             if (signal == "Open_buy" or (gv.global_args.buy_sell == True and signal == "Open_sell")):
                 logger.info(str(symbol) + ": Signal to open position find: " + signal)
                 if self.risk_manager.is_tradable(force_update=True):
                     logger.info("Risk manager checker: Ok.")
                     self.order = Order(current_price, symbol, self.strategy, atr_value, isBuy= True if signal == "Open_buy" else False)
-                    self.open_n_check(0)
+                    self.open_n_check()
                     # self.order.open_position()
                     # self.locker.is_bar_locked = True
                     # self.frame = self.position_id_in_frame(self.order, self.frame, self.is_order_open)
@@ -44,7 +44,7 @@ class Trade_mode(Mode):
         super().dynamic_tp_checker()
         if type(self.order) == Order and gv.global_args.dynamic_take_profit:
             self.order.set_new_take_profit(new_tp)
-            logger.debug(f"Order to change TP: {self.order.id}, значение:  {new_tp}")
+            logger.info(f"Order to change TP: {self.order.id}, значение:  {new_tp}")
 
     # Функция Trailing stop
     def trailing_stop_checker(self, current_price):
@@ -68,20 +68,15 @@ class Trade_mode(Mode):
                 self.check_opened_positions(symbol)
 
         except(UnboundLocalError):
-            logger.exception(str(symbol) + ": lets_trade(): Переменная или объект не в том месте.!!!")
+            logger.exception(str(symbol) + ": Переменная или объект не в том месте.!!!")
                     
     def sl_tp_checker():
         pass
 
-    def open_n_check(self, count):
-        if count == 1:
-            self.order = None
-            return
+    def open_n_check(self):
         if not self.order.position_check():
             self.order.open_price = self.get_current_price()
             self.order.open_position()
-            count += 1
-            self.open_n_check(count)
         else:
             self.locker.is_bar_locked = True
             return

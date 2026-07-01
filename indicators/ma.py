@@ -23,7 +23,7 @@ class MA(Indicator):
                  return self.frame.tail(period)
     # Обновление значении индикатора        
     def update_values(self, frame):
-        logger.info("MA Начато обновление данных.")
+        logger.debug("MA Начато обновление данных.")
         if (self.in_type == "ema"):
             frame = self.update_ema(frame)
         elif (self.in_type == "sma"):

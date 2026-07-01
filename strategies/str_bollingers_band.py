@@ -25,7 +25,7 @@ class Strategy_BB(Strategy):
                                    # MACD изначальные параметры 12, 26, 9
                                    MACD('MACD', 12, 8, 21, 5), 
                                    ADX('ADX', 16), 
-                                   ATR("ATR", 14), MA("EMA", 200, "ema")]
+                                   ATR("ATR", 14), MA("EMA", 50, "ema")]
                 self.rsi_open = rsi_open
                 self.adx_open = adx_open
                 self.open_triger = open_triger
@@ -40,12 +40,14 @@ class Strategy_BB(Strategy):
                          (frame['macd_hist'] > frame['macd_hist_sh1'])
 
             condition_strong_trend = (frame['ADX'] >= 25)
+            # Идея ниже хороша, но в связке с остальными очень малый рпофит и редкие вход в сделки. 
+            # condition_bb_return = (frame['close'].shift(1) < frame['BBL_16_2.0_2.0'].shift(1)) & (frame['close'] > frame['BBL_16_2.0_2.0'])
             
             conditions = [
                 (frame[self.open_triger] <= frame['BBL_16_2.0_2.0']) & 
                 (frame['RSI'] < self.rsi_open) &
                 (frame['ADX'] > self.adx_open) &
-                # condition_ema_filter &
+                #(frame['close'] > frame['EMA']) & # Попытка входит в сделки не на падающем тренде
                 (condition_macd_confirm | condition_strong_trend)
                 ,
                 (frame['high'] >= frame['BBU_16_2.0_2.0']) & 

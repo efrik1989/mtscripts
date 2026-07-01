@@ -36,6 +36,6 @@ class ATR(Indicator):
         return df
 
     def update_values(self, frame):
-        logger.info("MA Начато обновление данных.")
+        logger.debug("ATR Начато обновление данных.")
         frame = self.calculate_atr(frame, atr_type='rma')
         return frame

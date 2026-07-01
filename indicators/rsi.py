@@ -15,7 +15,7 @@ class RSI(Indicator):
         self.ema = ema
 
     def update_values(self, frame):
-        logger.info("RSI Начато обновление данных.")
+        logger.debug("RSI Начато обновление данных.")
         close_delta = frame['close'].diff()
         # Делаем две серий: одну для низких закрытий и одну для высоких закрытий
         up = close_delta.clip(lower=0)
@@ -33,6 +33,6 @@ class RSI(Indicator):
         rsi = ma_up / ma_down
         rsi = 100 - (100/(1 + rsi))
         frame[self.name] = rsi
-        logger.info("update_RSI_values(): Закончено обновление данных RSI.")
+        logger.debug("Закончено обновление данных RSI.")
         return frame
     

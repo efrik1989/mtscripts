@@ -14,7 +14,7 @@ class Bollinger(Indicator):
         self.period = period
 
     def update_values(self, frame):
-        logger.info("BB updating frame values...")
+        logger.debug("BB updating frame values...")
         frame.ta.bbands(length=self.period, std=1.4, append=True)
         return frame
     

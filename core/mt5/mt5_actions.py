@@ -81,7 +81,9 @@ class MT5_actions():
     def get_position_info(symbol):
         try:
             current_position = mt5.positions_get(symbol=symbol)
-            position = pd.DataFrame(list(current_position),columns=current_position[0]._asdict().keys())
-            return position
+            logger.debug(f"{symbol}: posotion info: {current_position}")
+            if current_position is not None and len(current_position) > 0:
+                position = pd.DataFrame(list(current_position),columns=current_position[0]._asdict().keys())
+                return position
         except(Exception):
             logger.exception("Ошибка при получении информации о позиции.")

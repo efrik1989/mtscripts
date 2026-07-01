@@ -19,6 +19,7 @@ class Strategy():
         try:    
                 frame = pd.concat([frame, last_bar_frame], ignore_index=True)
                 for indicator in self.indicators:
+                    logger.info(f"{symbol}: Обновление данных индикатора {indicator.name}")
                     frame = indicator.update_values(frame)
                     
                 return frame

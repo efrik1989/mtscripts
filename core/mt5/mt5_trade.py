@@ -465,19 +465,21 @@ class Trade(trade.Trade):
         # Получаем текущие открытые позиции по инструменту
         positions = Mt5.positions_get(symbol=symbol)
         if positions is None or len(positions) == 0:
+            logger.info(f"There are no open positions on {symbol}, positions: {len(positions)}")
             return
+
 
         for pos in positions:
             pos_id = pos.ticket
             pos_type = pos.type
             open_price = pos.price_open
             current_sl = pos.sl
-            
+            logger.info(f"{symbol}: ID: {pos_id}, position type: {pos_type}, open price: {open_price}, current sl: {current_sl}")
             # Получаем актуальные цены Ask и Bid
             tick = Mt5.symbol_info_tick(symbol)
             if tick is None:
                 continue
-                
+            # тут есть сомнения. Стоит ли это использовать.
             current_bid = tick.bid
             current_ask = tick.ask
 
@@ -507,6 +509,15 @@ class Trade(trade.Trade):
                     if current_sl == 0 or new_sl < current_sl:
                         self.modify_position_sl(pos_id, new_sl, pos.tp)
 
+        positions = Mt5.positions_get(symbol=symbol)
+        if positions is None or len(positions) == 0:
+            logger.info(f"There are no open positions on {symbol}, positions: {len(positions)}")
+            return
+        
+        for up_pos in positions:
+            logger.info(f"SL is updated. Current SL: {up_pos.sl}")
+        
+
     def modify_position_sl(self, position_ticket, new_sl, tp):
         """Отправляет запрос на модификацию Stop Loss позиции"""
         request = {
@@ -515,9 +526,9 @@ class Trade(trade.Trade):
             "sl": new_sl,
             "tp": tp
         }
-        result = Mt5.trade_send(request)
+        result = Mt5.order_send(request)
         if result.retcode != Mt5.TRADE_RETCODE_DONE:
-            print(f"Ошибка модификации Трала для #{position_ticket}: {result.comment}")
+            logger.info(f"Ошибка модификации Трала для #{position_ticket}: {result.comment}")
         else:
-            print(f"Трейлинг-стоп активирован. Позиция #{position_ticket} новый SL: {new_sl}")
+            logger.info(f"Трейлинг-стоп активирован. Позиция #{position_ticket} новый SL: {new_sl}")
 
