@@ -96,7 +96,7 @@ class Mode():
         """МЕтод проверки необходимости обновлять фрэйм."""
         try:
             if frame.empty:
-                    logger.critical(str(symbol) + ": is_need_update_lst_bar(): Frame is empty!")
+                    logger.critical(str(symbol) + ": Frame is empty!")
             
             last_bar_time = np.array(last_bar_frame['time'])[-1]
             last_bar_time_frame = np.array(frame['time'].tail(1))[-1]
@@ -105,7 +105,7 @@ class Mode():
             else:
                 return False
         except(AttributeError):
-            logger.critical(str(symbol) + ": is_need_update_lst_bar(): 1 оr more objects become 'None/Null'")
+            logger.critical(str(symbol) + ": 1 оr more objects become 'None/Null'")
 
     def update_frame_startegy(self, symbol, frame: pd.DataFrame, last_bar_frame, strategy: Strategy):
         """Метод обновления фрейма стратегиями"""
@@ -133,7 +133,7 @@ class Mode():
         if order is not None:
             value = order.id
         if type(index) == int:
-            frame.at[index,'order_id'] = value
+            frame.loc[frame.index[index],'order_id'] = value
         
         return frame
     

@@ -29,7 +29,7 @@ class Trade_mode(Mode):
                     self.open_n_check()
                     # self.order.open_position()
                     # self.locker.is_bar_locked = True
-                    # self.frame = self.position_id_in_frame(self.order, self.frame, self.is_order_open)
+                    # self.frame = self.position_id_in_frame(self.order, self.frame, -1)
 
     # Проверка закрытия сделки buy
     def close_position_signal_checker(self, symbol, close_signal):

@@ -71,6 +71,8 @@ class Order():
             self.trade_obj.position_open(self.isBuy, not self.isBuy)
         except:
             logger.error(f"{self.symbol}: Somthing went wrong to open position!!!")
+        position = mt5_a.get_position_info(self.symbol)
+        self.id = position.ticket
 
     def close_position(self):
         try:
