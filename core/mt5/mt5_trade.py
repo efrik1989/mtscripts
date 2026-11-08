@@ -1,5 +1,6 @@
 import math
 import MetaTrader5 as Mt5
+import mt5.mt5_actions
 from abstractEasyT import trade
 import core.app_logger as app_logger
 
@@ -511,7 +512,7 @@ class Trade(trade.Trade):
 
         positions = Mt5.positions_get(symbol=symbol)
         if positions is None or len(positions) == 0:
-            logger.info(f"There are no open positions on {symbol}, positions: {len(positions)}")
+            logger.info(f"There are no open positions on {symbol}, positions: {0 if positions is None else len(positions)}")
             return
         
         for up_pos in positions:
@@ -531,4 +532,46 @@ class Trade(trade.Trade):
             logger.info(f"Ошибка модификации Трала для #{position_ticket}: {result.comment}")
         else:
             logger.info(f"Трейлинг-стоп активирован. Позиция #{position_ticket} новый SL: {new_sl}")
+
+
+    def change_take_profit(self, symbol, new_tp):
+
+        positions = Mt5.positions_get(symbol=symbol)
+        if positions is None or len(positions) == 0:
+            logger.info(f"There are no open positions on {symbol}, positions: {0 if positions is None else len(positions)}")
+            return
+
+        is_needed_to_change = False
+        position = positions[0]
+        self.take_profit = position.tp
+        logger.info(f"текущий TP: {self.take_profit}")
+        if self.isBuy:
+            if (self.take_profit + self.atr) <=  new_tp:
+                self.take_profit = new_tp
+                is_needed_to_change = True
+        else:
+            if (self.take_profit + self.atr) >=  new_tp:
+                self.take_profit = new_tp
+                is_needed_to_change = True
+
+        if is_needed_to_change:
+            request = {
+                "ticket": position.ticket,
+                "action": Mt5.TRADE_ACTION_SLTP,
+                "symbol": self.symbol,
+                "tp": self.take_profit,
+                "magic": 7777,
+                "comment": "dynamic TP, python",
+            }
+            result=mt5.order_send(request)
+            # request the result as a dictionary and display it element by element
+            result_dict=result._asdict()
+            if result.retcode != Mt5.TRADE_RETCODE_DONE:
+                logger.error("4. order_send failed, retcode={}".format(result.retcode))
+                logger.error(f"   result: {result_dict}")
+            else:
+                
+                logger.info("Value of Take Profit is changed. TP = " + str(result_dict.get('tp')))
+        else:
+            logger.info(f"Value of Take Profit is not changed. No need to change. TP = {self.take_profit}, new TP value = {new_tp}")
 

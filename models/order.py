@@ -17,6 +17,7 @@ class Order():
         self.START_TRAILING = atr_value
         self.open_price = open_price    # Цена открытия сделки.
         self.symbol = symbol
+        self.atr = atr_value
         self.stop_atr = atr_value * 2.5
         self.take_atr = atr_value * 5
         self.trade_obj = trade.Trade(symbol, 1.0, self.stop_atr, self.take_atr)
@@ -112,36 +113,8 @@ class Order():
 
     def set_new_take_profit(self, new_tp):
         if new_tp != None or new_tp != "":
-            order_type = None
-            
-            position = mt5_a.get_position_info(self.symbol)
-            self.take_profit = pd.to_numeric(position['tp'])[0]
-            if self.isBuy:
-                order_type = mt5.ORDER_TYPE_BUY
-            else:
-                order_type = mt5.ORDER_TYPE_SELL
-            self.take_profit = new_tp
-            
-            request = {
-                "action": mt5.TRADE_ACTION_SLTP,
-                "symbol": self.symbol,
-                "volume": 1.0,
-                "type": order_type,
-                "tp": self.take_profit,
-                "magic": 7777,
-            "comment": "dynamic TP, python",
-                "type_time": mt5.ORDER_TIME_GTC,
-                "type_filling": mt5.ORDER_FILLING_RETURN,
-            }
-            result=mt5.order_send(request)
-            # request the result as a dictionary and display it element by element
-            result_dict=result._asdict()
-            if result.retcode != mt5.TRADE_RETCODE_DONE:
-                logger.error("4. order_send failed, retcode={}".format(result.retcode))
-                logger.error(f"   result: {result_dict}")
-            else:
-                
-                logger.info("Value of Take Profit is changed. TP = " + str(result_dict.get('tp')))
+
+            trade.change_take_profit(self.symbol, new_tp)
 
     def to_string(self):
         return "" + str(self.open_price) + " " + str(self.symbol) + " " + str(self.isBuy)
