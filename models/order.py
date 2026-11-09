@@ -108,12 +108,11 @@ class Order():
         logger.info(f"{self.symbol}: positions info:{mt5_a.get_position_info(self.symbol)}")
            
     def fake_set_new_take_profit(self, new_tp):
-        if new_tp != None or new_tp != "":
+        if new_tp != None and new_tp != "":
             self.take_profit = new_tp
 
     def set_new_take_profit(self, new_tp):
-        if new_tp != None or new_tp != "":
-
+        if new_tp != None and new_tp != "":
             trade.change_take_profit(self.symbol, new_tp)
 
     def to_string(self):

@@ -25,15 +25,15 @@ class RiskManager(metaclass=SingletonMeta):
             
             self.account_info_dict = {}
             self.equity = 0.0
+            self.initial_balance = 0.0 
             
             self._last_update_time = 0
             self._cache_ttl = cache_ttl
             
             self._lock = threading.RLock()
             
-            # Глобальный флаг остановки: True - торговля разрешена, False - запрещена
             self.trading_allowed = threading.Event()
-            self.trading_allowed.set() # По умолчанию разрешаем
+            self.trading_allowed.set()
             
             self._initialized = True
 
@@ -44,6 +44,8 @@ class RiskManager(metaclass=SingletonMeta):
                 logger.error(f"Initialize failed: {mt5.last_error()}")
                 return False
         return True
+
+        
 
     def update_account_data(self, force=False):
         with self._lock:
@@ -56,23 +58,33 @@ class RiskManager(metaclass=SingletonMeta):
                 if account_info is not None:
                     self.account_info_dict = account_info._asdict()
                     self.equity = float(self.account_info_dict.get("equity", 0.0))
+                    
+                    # ДОБАВЛЯЕМ: Фиксируем начальный баланс при самом первом обновлении данных
+                    if self.initial_balance == 0.0:
+                        # Берем баланс (balance) или стартовую эквити (equity) в качестве отправной точки
+                        self.initial_balance = float(self.account_info_dict.get("balance", self.equity))
+                    
                     self._last_update_time = now
                     
-                    # АВТО-ПРОВЕРКА: Если данные обновились, сразу проверяем критический риск
                     if not self._check_emergency_stop():
                         self.trading_allowed.clear() # Блокируем всё
                     else:
-                        self.trading_allowed.set() # Разблокируем (если баланс восстановился)
+                        self.trading_allowed.set() # Разблокируем
                         
                     return True
                 return False
             return True
 
     def _check_emergency_stop(self):
-        """Внутренняя проверка критического порога equity."""
-        limit = self.equity - ((self.equity / 100) * self.lost_risk)
+        """Внутренняя проверка критического порога equity от начального баланса."""
+        if self.initial_balance == 0.0:
+            return True
+            
+        limit = self.initial_balance - ((self.initial_balance / 100) * self.lost_risk)
+        
+        # Теперь условие сработает корректно, если текущая эквити упадет ниже лимита (например, станет 940)
         if self.equity < limit:
-            logger.critical(f"EMERGENCY STOP! Equity {self.equity} < Limit {limit}")
+            logger.critical(f"EMERGENCY STOP! Equity {self.equity} < Limit {limit} (Initial Balance: {self.initial_balance})")
             return False
         return True
 

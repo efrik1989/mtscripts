@@ -39,7 +39,6 @@ class Historic_mode(Mode):
         if type(self.order) == Order and signal=="NaN" and (close_signal == "Close_buy" or (gv.global_args.buy_sell == True and close_signal == "Close_sell")):
             last_position_profit = self.order.fake_buy_sell_close(current_price)
             self.check_order_profit(last_position_profit)
-            self.profit += last_position_profit
             logger.info(str(symbol) + ": Signal to close position find: " + close_signal + " profit: " + str(last_position_profit))
             self.order = None
     
@@ -123,6 +122,11 @@ class Historic_mode(Mode):
             atr_value = float(frame['ATR'] * 4)
            
             self.signals_handler(symbol, signal, atr_value, close_signal, frame, index)
+        
+        if type(self.order) == Order:
+            last_close_price = float(self.frame['close'].iloc[-1])
+            logger.info(f"{symbol}: Бэктест завершен. Принудительно закрываем оставшийся ордер по цене {last_close_price}.")
+            self.close_open_positions(last_close_price, symbol)
 
         self.set_finish_resume(symbol, frame)
     
