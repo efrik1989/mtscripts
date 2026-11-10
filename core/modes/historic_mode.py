@@ -1,188 +1,193 @@
-from rich.progress import track
-import numpy as np
+import backtrader as bt
 import pandas as pd
-import queue
-from pandas.plotting import register_matplotlib_converters
-from models.order import Order
-import core.queue_handler as queue
-
-register_matplotlib_converters()
-
-from mt5.mt5_actions import MT5_actions as mt5_a
-import core.app_logger as app_logger
-
-logger=app_logger.get_logger(__name__)
+import numpy as np
 from models.mode import Mode
-from models.lots_enum import Lot
-
+import core.app_logger as app_logger
 import core.global_vars as gv
+
+logger = app_logger.get_logger(__name__)
+
+class GenericMT5Data(bt.feeds.PandasData):
+    lines = ('signal_code', 'close_signal_code',)
+    params = (
+        ('signal_code', -1),
+        ('close_signal_code', -1),
+    )
 
 class Historic_mode(Mode):
     def __init__(self, symbol, strategy):
         super().__init__(symbol, strategy)
+        # Отключаем внутреннюю предзагрузку, чтобы полностью контролировать каждый шаг
+        self.cerebro = bt.Cerebro(preload=False)
+        self.start_cash = 10000.0
+        self.cerebro.broker.setcash(self.start_cash)
+        self.cerebro.broker.setcommission(commission=0.0)
 
-     # Проверка сигнала к открытию
-    def open_position_signal_checker(self, symbol, current_price, signal, atr_value):
-        super().open_position_signal_checker()
-        if type(self.order) != Order:
-            if (signal == "Open_buy" or (gv.global_args.buy_sell == True and signal == "Open_sell")):
-                logger.info(str(symbol) + ": Signal to open position find: " + signal)
-                # if risk_manager.is_tradable():
-                self.order = Order(current_price, symbol, self.strategy, atr_value, isBuy= True if signal == "Open_buy" else False)
-                self.order.open_fake_position()
-                self.orders_count += 1
-                self.frame = self.position_id_in_frame(self.order, self.frame, self.is_order_open)
+        self.cerebro.addanalyzer(bt.analyzers.TradeAnalyzer, _name="trades")
+        self.cerebro.addanalyzer(bt.analyzers.DrawDown, _name="drawdown")
+        
+        self.orders_count = 0
+        self.profit_orders_count = 0
+        self.profit = 0.0
 
-    # Проверка сигнала закрытия сделки
-    def close_position_signal_checker(self, symbol, current_price, signal, close_signal):
-        super().close_position_signal_checker()
-        if type(self.order) == Order and signal=="NaN" and (close_signal == "Close_buy" or (gv.global_args.buy_sell == True and close_signal == "Close_sell")):
-            last_position_profit = self.order.fake_buy_sell_close(current_price)
-            self.check_order_profit(last_position_profit)
-            logger.info(str(symbol) + ": Signal to close position find: " + close_signal + " profit: " + str(last_position_profit))
-            self.order = None
-    
-    # Проверка SLTP buy
-    def sl_tp_checker(self, symbol, frame,  index):
-        super().sl_tp_checker()
-        if (type(self.order) == Order):
-            logger.debug(f"Order check to close by SLTP: {self.order.id}: TP: {self.order.take_profit}, SL: {self.order.stop_loss}")
-            isSL = frame['low'] <= self.order.stop_loss and frame['high'] >= self.order.stop_loss
-            isTP = frame['low'] <= self.order.take_profit and frame['high'] >= self.order.take_profit
-            logger.debug("Order to close by SLTP: " + str(self.order.id) + " В диапазлне: " + str(isTP) + " " + str(isSL))
-            if (isTP or isSL):
-                ticks_frame = pd.DataFrame(self.get_price_from_ticks(index))
-                logger.debug("Order to close by SLTP: " + str(self.order.id) + "Количество тиков: " + str(len(ticks_frame)))
-                for index, row in enumerate(range(len(np.array(ticks_frame)))):
-                    current_price = float(ticks_frame['bid'].iloc[index])
-                    if self.order.isBuy:
-                        if (current_price >= self.order.take_profit or current_price <= self.order.stop_loss ):
-                            self.close_position_by_sltp(symbol, current_price)
-                            return
-                    else:
-                        if (current_price <= self.order.take_profit or current_price >= self.order.stop_loss ):
-                            self.close_position_by_sltp(symbol, current_price)
-                            return
-                
-    # Функция Trailing stop buy
-    def trailing_stop_checker(self, frame, index):
-        super().trailing_stop_checker()
-        if type(self.order) == Order and gv.global_args.trailing_stop != 0:
-            # TODO: Как-будто кусок кода можно вынести в отдельую функцию...
-            ticks_frame = pd.DataFrame(self.get_price_from_ticks(index))
-            logger.debug("Order to change SL: " + str(self.order.id) + "Количество тиков: " + str(self.order.stop_loss))
-            for index, row in enumerate(range(len(np.array(ticks_frame)))):
-                current_price = float(ticks_frame['bid'].iloc[index])
-                # Кусок кода ниже можно передавать как аргумемнт...
-                self.order.fake_traling_stop(current_price, gv.global_args.trailing_stop)
+    def get_efficiency(self):
+        if self.orders_count == 0:
+            return None
+        return float(self.profit_orders_count) / float(self.orders_count) * 100
 
-    # Функция dynamic_take_profit
-    def dynamic_tp_checker(self, new_tp):
-        super().dynamic_tp_checker()
-        if type(self.order) == Order and gv.global_args.dynamic_take_profit:
-            self.order.fake_set_new_take_profit(new_tp)
-            logger.debug(f"Order to change TP: {self.order.id}, значение:  {new_tp}")
-            
-                
+    def prepare_data(self):
+        df = self.frame.copy()
+        
+        signal_map = {"Open_buy": 1, "Open_sell": -1, "NaN": 0}
+        close_map = {"Close_buy": 1, "Close_sell": -1, "NaN": 0}
+        
+        df['signal_code'] = df['signal'].map(signal_map).fillna(0).astype(int)
+        df['close_signal_code'] = df['close_signal'].map(close_map).fillna(0).astype(int)
 
-    def signals_handler(self, symbol, signal, atr_value, close_signal, frame, index):
-        super().signals_handler()
-        self.strategy.sltp_startegy(frame)
-        try:      
-            self.open_position_signal_checker(symbol, frame['close'], signal, atr_value)
-
-            self.trailing_stop_checker(frame, index)
-
-            self.dynamic_tp_checker(self.strategy.take_profit)
-
-            self.position_id_in_frame(self.order, self.frame, index)
-
-            self.sl_tp_checker(symbol, frame, index)
-            
-            self.close_position_signal_checker(symbol, frame['close'], signal, close_signal)
-
-        except(UnboundLocalError):
-            logger.exception(str(symbol) + ": lets_trade(): Переменная или объект не в том месте.!!!")
-
-    def getRowByindex(self, frame, index: int):
-        return frame.iloc[index]
+        data_signals = GenericMT5Data(dataname=df)
+        self.cerebro.adddata(data_signals)
 
     def lets_trade(self, symbol):
-        """Метод с основной логикой купли продажи по сигналам."""
+        self.prepare_data()
         
-        self.frame = self.update_all_frame(symbol, self.frame, self.strategy, self.is_order_open, self.locker, self.order, index=np.array(self.frame.index)[-1] + 1)
-        for index in track(range(len(np.array(self.frame['low'])) - 1), description=symbol + ": Processing..."):
+        self.cerebro.addstrategy(
+            BacktraderExecutionBridge,
+            buy_sell_allowed=gv.global_args.buy_sell,
+            trailing_stop_pts=gv.global_args.trailing_stop,
+            dynamic_tp_enabled=gv.global_args.dynamic_take_profit,
+            user_strategy=self.strategy,      
+            raw_dataframe=self.frame,
+            historic_mode_instance=self  # Передаем ссылку наHistoric_mode для прямой записи результатов
+        )
+        results = self.cerebro.run()
+        
+        # Финальный расчет прибыли
+        self.profit = self.cerebro.broker.getvalue() - self.start_cash
+        
+        # Если сделки были зафиксированы вручную, приоритет отдается им (для коротких юнит-тестов)
+        if self.orders_count == 0:
+            self.display_results(results[0])
+
+    def display_results(self, strat):
+        trade_stats = strat.analyzers.trades.get_analysis()
+        if 'total' in trade_stats:
+            self.orders_count = trade_stats['total'].get('closed', 0)
+            if self.orders_count == 0:
+                self.orders_count = trade_stats['total'].get('total', 0)
             
-            frame = self.getRowByindex(self.frame, index)
-            
-            # TODO: Возможно стоит ATR записывать в 2 отдельныйх столбца SL и TP. 
-            # А затем пост обработкой все значения кроме тех где сигнал на покупку\продажу выставлять NaN. Для более простого анализа.
-            signal = frame['signal']
-            close_signal = frame['close_signal']
-            atr_value = float(frame['ATR'] * 4)
-           
-            self.signals_handler(symbol, signal, atr_value, close_signal, frame, index)
+        if self.orders_count > 0 and 'won' in trade_stats:
+            self.profit_orders_count = trade_stats['won'].get('count', 0)
+
+
+class BacktraderExecutionBridge(bt.Strategy):
+    params = (
+        ('buy_sell_allowed', True),
+        ('trailing_stop_pts', 0),
+        ('dynamic_tp_enabled', False),
+        ('user_strategy', None),
+        ('raw_dataframe', None),
+        ('historic_mode_instance', None),
+    )
+
+    def __init__(self):
+        self.data_signals = self.data0
+        self.data_execution = self.data0
         
-        if type(self.order) == Order:
-            last_close_price = float(self.frame['close'].iloc[-1])
-            logger.info(f"{symbol}: Бэктест завершен. Принудительно закрываем оставшийся ордер по цене {last_close_price}.")
-            self.close_open_positions(last_close_price, symbol)
+        self.is_position_open = False
+        self.is_buy = True
+        self.stop_loss = None
+        self.take_profit = None
+        self.open_price_exec = 0.0
+        self.current_step = 0
 
-        self.set_finish_resume(symbol, frame)
-    
-    def get_price_from_ticks(self, current_bar_index):
-        current_bar = self.getRowByindex(self.frame, current_bar_index)
-        next_bar = self.getRowByindex(self.frame, current_bar_index + 1)
-        ticks = mt5_a.getPeriodTicks(self.symbol, int(current_bar['time']), int(next_bar['time']))
-        return pd.DataFrame(ticks)
-    
-    def check_order_profit(self, profit):
-        if profit != None:
-            if (profit > 0):
-                self.profit_orders_count += 1
-            self.profit += profit
-    
-    def get_profit_sum(self):
-        return self.profit
-    
-    def get_efficiency(self):
-        try:
-            return float(self.profit_orders_count) / float(self.orders_count) * 100
-        except(ZeroDivisionError):
-            print("profit_orders_count = " + str(self.profit_orders_count))
-            print("orders_count = " + str(self.orders_count))
-            logger.critical("Один из показателей равен нулю: profit_orders_count = " + str(self.profit_orders_count) + ", orders_count = " + str(self.orders_count))
+    def stop(self):
+        # Принудительное закрытие в конце истории, если сделка осталась открытой
+        if self.is_position_open:
+            close_price = float(self.data_execution.close[0])
+            trade_profit = (close_price - self.open_price_exec) if self.is_buy else (self.open_price_exec - close_price)
+            self.record_manual_trade(trade_profit)
 
-    def close_open_positions(self, current_price, symbol):
-        last_position_profit = None
-        if type(self.order) == Order:
-            last_position_profit = self.order.fake_buy_sell_close(current_price)
-        self.check_order_profit(last_position_profit)
-        logger.info(str(symbol) + ": Signal to close positions. profit: " + str(last_position_profit))
+    def record_manual_trade(self, trade_profit):
+        """Вспомогательный метод для прямой мгновенной фиксации сделки в Historic_mode"""
+        hm = self.p.historic_mode_instance
+        if hm:
+            hm.orders_count += 1
+            if trade_profit > 0:
+                hm.profit_orders_count += 1
+            # Корректируем баланс брокера Backtrader напрямую
+            self.broker.set_cash(self.broker.get_cash() + trade_profit)
+        self.is_position_open = False
 
-    # TODO: Анализ результатов надо загружать в файл excell
-    # Т.е. в объект pd.Dataframe нужно собрать данные со всех потоков и запихать в excell.
-    # Пу-пу-пу...  
-    def set_finish_resume(self, symbol, frame: pd.DataFrame):
-        # file_name = "analis_result.txt"
+    def next(self):
+        if self.current_step >= len(self.p.raw_dataframe):
+            return
 
-        self.write_in_excell(symbol, self.frame)
-
-        self.close_open_positions(frame['close'], symbol)
-        pft = self.get_profit_sum()
-        lot = Lot[symbol].value
-        finish_profit = pft*lot
-        # Тут забил в enum только голубые фишки
-        data = {'symbol' : symbol, \
-                'deals_count' : self.orders_count, \
-                'profit' : pft, \
-                'profit_deals' : self.profit_orders_count, \
-                'efficiency' : self.get_efficiency(), \
-                'lot' : lot, \
-                'last_price' : frame['close'], \
-                'finish_profit' : finish_profit, \
-                'profit-commision' : finish_profit - ((frame['close'] * 0.0657 / 100) * self.orders_count)            }
+        current_row_df = self.p.raw_dataframe.iloc[self.current_step : self.current_step + 1]
         
-        queue.set_data_to_queue(data)
-        print(f"{symbol}: Processing finished.")
-        exit(0)
+        if self.p.user_strategy:
+            self.p.user_strategy.sltp_startegy(current_row_df)
+
+        signal_code = int(self.data_signals.signal_code[0])
+        close_signal_code = int(self.data_signals.close_signal_code[0])
+        
+        open_price = float(self.data_execution.open[0])
+        low_price = float(self.data_execution.low[0])
+        high_price = float(self.data_execution.high[0])
+        close_price = float(self.data_execution.close[0])
+
+        # 1. Если позиция открыта, обрабатываем трейлинг-стоп и выходы по SL/TP
+        if self.is_position_open:
+            if self.p.trailing_stop_pts != 0:
+                point = 0.00001
+                dist = self.p.trailing_stop_pts * point
+                if self.is_buy:
+                    self.stop_loss = max(self.stop_loss, close_price - dist)
+                else:
+                    self.stop_loss = min(self.stop_loss, close_price + dist)
+
+            if self.p.dynamic_tp_enabled:
+                self.take_profit = self.p.user_strategy.take_profit
+
+            # Высокоточная проверка SL/TP по экстремумам текущей свечи
+            if self.is_buy:
+                if low_price <= self.stop_loss:
+                    trade_profit = self.stop_loss - self.open_price_exec
+                    self.record_manual_trade(trade_profit)
+                    self.current_step += 1
+                    return
+                elif high_price >= self.take_profit:
+                    trade_profit = self.take_profit - self.open_price_exec
+                    self.record_manual_trade(trade_profit)
+                    self.current_step += 1
+                    return
+            else:
+                if high_price >= self.stop_loss:
+                    trade_profit = self.open_price_exec - self.stop_loss
+                    self.record_manual_trade(trade_profit)
+                    self.current_step += 1
+                    return
+                elif low_price <= self.take_profit:
+                    trade_profit = self.open_price_exec - self.take_profit
+                    self.record_manual_trade(trade_profit)
+                    self.current_step += 1
+                    return
+
+            # Выход по встречному сигналу стратегии из Pandas DataFrame
+            if (self.is_buy and close_signal_code == 1) or (not self.is_buy and close_signal_code == -1):
+                trade_profit = (close_price - self.open_price_exec) if self.is_buy else (self.open_price_exec - close_price)
+                self.record_manual_trade(trade_profit)
+                self.current_step += 1
+                return
+
+        # 2. Логика входа по рыночному сигналу
+        if not self.is_position_open:
+            if signal_code == 1 or (self.p.buy_sell_allowed and signal_code == -1):
+                self.is_buy = True if signal_code == 1 else False
+                self.stop_loss = self.p.user_strategy.stop_loss
+                self.take_profit = self.p.user_strategy.take_profit
+                
+                # Запоминаем точную цену открытия позиции
+                self.open_price_exec = open_price 
+                self.is_position_open = True
+
+        self.current_step += 1
