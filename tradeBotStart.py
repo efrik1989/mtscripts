@@ -4,7 +4,6 @@ import core.args_parser as args_parser
 parser = args_parser.Args_parser()
 args = parser.args_parse()
 
-#TODO: Задачка усложнилась из риск мэнеджера надо сделать потоко безопасный синглтон
 from core.risk_manager import RiskManager
 risk_manager = RiskManager(args.monney_manager, args.lost_risk)
 

@@ -87,3 +87,13 @@ class MT5_actions():
                 return position
         except(Exception):
             logger.exception("Ошибка при получении информации о позиции.")
+
+    def get_symbol_point(symbol):
+        """Получает минимальный шаг цены (point) инструмента из MT5."""
+        try:
+            info = mt5.symbol_info(symbol)
+            if info and info.point > 0:
+                return float(info.point)
+        except Exception as e:
+            logger.warning(f"{symbol}: Не удалось получить point из MT5 ({e}). Используем 0.01")
+        return 0.01

@@ -71,11 +71,32 @@ class Strategy_BB(Strategy):
             return frame
         
         # Помечаем значения SLTP для данной стратегии    
-        def sltp_startegy(self, frame: pd.DataFrame):
+        def sltp_startegy(self, frame: pd.DataFrame, atr_mult: float = 2.0):
             super().sltp_startegy(frame)
             df = frame.tail(1)
             try:
-                self.stop_loss = df['BBM_16_2.0_2.0'].item()
-                self.take_profit = df['BBU_16_2.0_2.0'].item()
-            except:
-                 logger.warning("Нет значенийй BBM/BBU.")
+                close_p = df['close'].item()
+                atr = df['ATR'].item()
+                bbu = df['BBU_16_2.0_2.0'].item()
+                bbm = df['BBM_16_2.0_2.0'].item()
+                bbl = df['BBL_16_2.0_2.0'].item()
+
+                # Уровни для LONG (покупка у BBL -> стоп ниже цены, цель BBM или BBU)
+                self.buy_sl = close_p - (atr * atr_mult)
+                self.buy_tp = bbu
+
+                # Уровни для SHORT (продажа у BBU -> стоп выше цены, цель BBM или BBL)
+                self.sell_sl = close_p + (atr * atr_mult)
+                self.sell_tp = bbl
+
+                # Обратная совместимость, если старый код обращается к stop_loss / take_profit
+                signal = df['signal'].item() if 'signal' in df.columns else "NaN"
+                if signal == "Open_sell":
+                    self.stop_loss = self.sell_sl
+                    self.take_profit = self.sell_tp
+                else:
+                    self.stop_loss = self.buy_sl
+                    self.take_profit = self.buy_tp
+
+            except Exception as e:
+                logger.warning(f"Нет значений BB/ATR для расчёта SL/TP: {e}")
