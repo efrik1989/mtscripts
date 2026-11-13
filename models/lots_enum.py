@@ -50,7 +50,7 @@ class Lot(Enum):
     SFIN = 1
     HEAD = 1
     BELU = 1
-    SBER = 10
+    SBER = 1
     SMLT = 1
     VSEH = 1
     TATN = 1

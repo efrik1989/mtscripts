@@ -10,93 +10,94 @@ from indicators.adx import ADX
 from indicators.ma import MA
 
 import core.app_logger as app_logger
-logger=app_logger.get_logger(__name__)
+logger = app_logger.get_logger(__name__)
 
-# TODO: Стратегию есть куда улучшить!!!
-# Есть идея отсекать или как-то помечать тренды, чтобы не открывать сделки в противоположный тренд.
-# Или не открывать сделки при сильном тренде, а только в период консолидации и на проколах. 
-#  
-# Класс описывающий поведение стратегии(Покупка\Продажа) с Bollingers_bands
+
 class Strategy_BB(Strategy):
-        def __init__(self, period, rsi_open, adx_open, open_triger: str, close_triger: str):
-                super().__init__(period)
-                self.indicators = [Bollinger("BB", period), 
-                                   RSI("RSI", 11, True), 
-                                   # MACD изначальные параметры 12, 26, 9
-                                   MACD('MACD', 12, 8, 21, 5), 
-                                   ADX('ADX', 16), 
-                                   ATR("ATR", 14), MA("EMA", 50, "ema")]
-                self.rsi_open = rsi_open
-                self.adx_open = adx_open
-                self.open_triger = open_triger
-                self.close_triger = close_triger
+    def __init__(self, period: int, rsi_open: float, adx_open: float, open_triger: str = 'close', close_triger: str = 'close'):
+        super().__init__(period)
+        self.period = period
+        self.rsi_open = rsi_open
+        self.rsi_sell = 100 - rsi_open
+        self.adx_open = adx_open
+        self.open_triger = open_triger
+        self.close_triger = close_triger
 
-        # Проставление сигналов открытия сделок
-        def open_strategy(self, frame):
-            logger.info("BB strategy: start frame analis...")
+        self.bbu_col = f'BBU_{period}_2.0_2.0'
+        self.bbm_col = f'BBM_{period}_2.0_2.0'
+        self.bbl_col = f'BBL_{period}_2.0_2.0'
 
-            condition_macd_confirm = (frame['ADX'] >= 17) & \
-                         (frame['ADX'] < 25) & \
-                         (frame['macd_hist'] > frame['macd_hist_sh1'])
+        self.indicators = [
+            Bollinger("BB", period),
+            RSI("RSI", 11, True),
+            MACD('MACD', 12, 8, 21, 5),
+            ADX('ADX', 16),
+            ATR("ATR", 14),
+            MA("EMA", 50, "ema")
+        ]
 
-            condition_strong_trend = (frame['ADX'] >= 25)
-            # Идея ниже хороша, но в связке с остальными очень малый рпофит и редкие вход в сделки. 
-            # condition_bb_return = (frame['close'].shift(1) < frame['BBL_16_2.0_2.0'].shift(1)) & (frame['close'] > frame['BBL_16_2.0_2.0'])
-            
-            conditions = [
-                (frame[self.open_triger] <= frame['BBL_16_2.0_2.0']) & 
-                (frame['RSI'] < self.rsi_open) &
-                (frame['ADX'] > self.adx_open) &
-                #(frame['close'] > frame['EMA']) & # Попытка входит в сделки не на падающем тренде
-                (condition_macd_confirm | condition_strong_trend)
-                ,
-                (frame['high'] >= frame['BBU_16_2.0_2.0']) & 
-                (frame['RSI'] > 75) & 
-                (frame['ADX'] > 18) &
-                (frame['macd_hist'] < frame['macd_hist_sh1'])]
-            chois = ["Open_buy", "Open_sell"]
-            frame['signal'] = np.select(conditions, chois, default="NaN")   
-            return frame
-        
-        # Проставление сигналов закрытия сделок
-        def close_strategy(self, frame):
-            conditions = [
-                (frame['close'] >= frame['BBM_16_2.0_2.0']),
-                (frame['close'] <= frame['BBM_16_2.0_2.0']) & (frame['ADX'] < 25)
-                ]
-            chois = ["Close_buy", "Close_sell"]
-            frame['close_signal'] = np.select(conditions, chois, default="NaN")
+    def open_strategy(self, frame: pd.DataFrame) -> pd.DataFrame:
+        # 1. Режим рынка: флэт (ADX < 25) ИЛИ торговля строго в сторону тренда EMA 50
+        is_flat = frame['ADX'] < 25
+        uptrend = (frame['close'] > frame['EMA']) & (frame['EMA'] > frame['EMA'].shift(5))
+        downtrend = (frame['close'] < frame['EMA']) & (frame['EMA'] < frame['EMA'].shift(5))
 
-            logger.info("strategy: Analis complete.")
-            return frame
-        
-        # Помечаем значения SLTP для данной стратегии    
-        def sltp_startegy(self, frame: pd.DataFrame, atr_mult: float = 2.0):
-            super().sltp_startegy(frame)
-            df = frame.tail(1)
-            try:
-                close_p = df['close'].item()
-                atr = df['ATR'].item()
-                bbu = df['BBU_16_2.0_2.0'].item()
-                bbm = df['BBM_16_2.0_2.0'].item()
-                bbl = df['BBL_16_2.0_2.0'].item()
+        # 2. Касание/прокол границы канала на прошлой свече и возврат внутрь канала на текущей
+        touch_lower = (frame['low'].shift(1) <= frame[self.bbl_col].shift(1)) & (frame['close'] > frame[self.bbl_col])
+        touch_upper = (frame['high'].shift(1) >= frame[self.bbu_col].shift(1)) & (frame['close'] < frame[self.bbu_col])
 
-                # Уровни для LONG (покупка у BBL -> стоп ниже цены, цель BBM или BBU)
-                self.buy_sl = close_p - (atr * atr_mult)
-                self.buy_tp = bbu
+        # 3. Разворот импульса по MACD
+        macd_up = frame['macd_hist'] > frame['macd_hist_sh1']
+        macd_down = frame['macd_hist'] < frame['macd_hist_sh1']
 
-                # Уровни для SHORT (продажа у BBU -> стоп выше цены, цель BBM или BBL)
-                self.sell_sl = close_p + (atr * atr_mult)
-                self.sell_tp = bbl
+        # 4. Фильтр минимального потенциала сделки (защита от комиссий):
+        # Расстояние от текущей цены до противоположной границы канала должно быть минимум 1.5 * ATR
+        min_profit_room_buy = (frame[self.bbu_col] - frame['close']) >= (frame['ATR'] * 1.5)
+        min_profit_room_sell = (frame['close'] - frame[self.bbl_col]) >= (frame['ATR'] * 1.5)
 
-                # Обратная совместимость, если старый код обращается к stop_loss / take_profit
-                signal = df['signal'].item() if 'signal' in df.columns else "NaN"
-                if signal == "Open_sell":
-                    self.stop_loss = self.sell_sl
-                    self.take_profit = self.sell_tp
-                else:
-                    self.stop_loss = self.buy_sl
-                    self.take_profit = self.buy_tp
+        # 5. Немного строже фильтр RSI (отсекаем слабые отскоки)
+        buy_cond = (
+            touch_lower &
+            (frame['RSI'] < (self.rsi_open - 3)) &
+            macd_up &
+            (is_flat | uptrend) &
+            min_profit_room_buy
+        )
+        sell_cond = (
+            touch_upper &
+            (frame['RSI'] > (self.rsi_sell + 3)) &
+            macd_down &
+            (is_flat | downtrend) &
+            min_profit_room_sell
+        )
 
-            except Exception as e:
-                logger.warning(f"Нет значений BB/ATR для расчёта SL/TP: {e}")
+        frame['signal'] = np.select([buy_cond, sell_cond], ["Open_buy", "Open_sell"], default="NaN")
+        return frame
+
+
+    def close_strategy(self, frame: pd.DataFrame) -> pd.DataFrame:
+        # Отдаём закрытие динамическому TP (BBU/BBL) и Trailing Stop,
+        # чтобы не резать прибыль на средней линии BBM
+        frame['close_signal'] = "NaN"
+        return frame
+
+    def sltp_startegy(self, frame: pd.DataFrame, atr_mult: float = 2.5):
+        super().sltp_startegy(frame)
+        if frame.empty:
+            return
+        df = frame.iloc[-1]
+        try:
+            close_p = float(df['close'])
+            atr = float(df['ATR'])
+            self.buy_sl = close_p - (atr * atr_mult)
+            self.buy_tp = float(df[self.bbu_col])
+
+            self.sell_sl = close_p + (atr * atr_mult)
+            self.sell_tp = float(df[self.bbl_col])
+
+            signal = df.get('signal', "NaN")
+            self.stop_loss = self.sell_sl if signal == "Open_sell" else self.buy_sl
+            self.take_profit = self.sell_tp if signal == "Open_sell" else self.buy_tp
+        except (KeyError, ValueError, TypeError) as e:
+            logger.warning(f"Ошибка расчёта SL/TP: {e}")
+

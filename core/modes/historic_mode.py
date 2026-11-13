@@ -293,24 +293,9 @@ class BacktraderExecutionBridge(bt.Strategy):
             self.pending_tp = None
 
         # 2. Сопровождение открытой позиции
+                # 2. Сопровождение открытой позиции
         if self.is_position_open:
-            # Трейлинг-стоп
-            if self.p.trailing_stop_pts != 0 and self.stop_loss is not None:
-                dist = self.p.trailing_stop_pts * self.p.point_size
-                if self.is_buy:
-                    self.stop_loss = max(self.stop_loss, close_price - dist)
-                else:
-                    self.stop_loss = min(self.stop_loss, close_price + dist)
-
-            # Динамический тейк-профит
-            if self.p.dynamic_tp_enabled and self.p.user_strategy:
-                current_row_df = self.p.raw_dataframe.iloc[self.current_step: self.current_step + 1]
-                self.p.user_strategy.sltp_startegy(current_row_df)
-                new_tp = getattr(self.p.user_strategy, 'take_profit', None)
-                if new_tp is not None:
-                    self.take_profit = new_tp
-
-            # Проверка выходов по SL, TP или сигналу закрытия стратегии
+            # Сначала проверяем выход по уровням, установленным на ПРОШЛОМ баре (без заглядывания в будущее)
             if self.is_buy:
                 if self.stop_loss is not None and low_price <= self.stop_loss:
                     self.record_manual_trade(self.stop_loss - self.open_price_exec)
@@ -325,6 +310,27 @@ class BacktraderExecutionBridge(bt.Strategy):
                     self.record_manual_trade(self.open_price_exec - self.take_profit)
                 elif close_signal_code == -1:
                     self.record_manual_trade(self.open_price_exec - close_price)
+
+            # Если позиция всё ещё открыта после проверки — обновляем Trailing Stop и Dynamic TP на СЛЕДУЮЩИЙ бар
+            if self.is_position_open:
+                if self.p.trailing_stop_pts != 0 and self.stop_loss is not None:
+                    dist = self.p.trailing_stop_pts * self.p.point_size
+                    if self.is_buy:
+                        self.stop_loss = max(self.stop_loss, close_price - dist)
+                    else:
+                        self.stop_loss = min(self.stop_loss, close_price + dist)
+
+                if self.p.dynamic_tp_enabled and self.p.user_strategy:
+                    current_row_df = self.p.raw_dataframe.iloc[self.current_step: self.current_step + 1]
+                    self.p.user_strategy.sltp_startegy(current_row_df)
+                    _, new_tp = self._get_strategy_levels(self.is_buy)
+                    if new_tp is not None:
+                        # Защита: динамический TP не имеет права опускаться ниже цены входа (для Buy) или подниматься выше (для Sell)
+                        if self.is_buy and new_tp > self.open_price_exec:
+                            self.take_profit = new_tp
+                        elif not self.is_buy and new_tp < self.open_price_exec:
+                            self.take_profit = new_tp
+
 
         # 3. Оценка сигналов по закрытию текущей свечи для входа на следующей
         if not self.is_position_open and signal_code != 0:
