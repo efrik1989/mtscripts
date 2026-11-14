@@ -37,63 +37,90 @@ class Strategy_BB(Strategy):
         ]
 
     def open_strategy(self, frame: pd.DataFrame) -> pd.DataFrame:
-        # 1. Режим рынка: флэт (ADX < 25) ИЛИ торговля строго в сторону тренда EMA 50
-        is_flat = frame['ADX'] < 25
-        uptrend = (frame['close'] > frame['EMA']) & (frame['EMA'] > frame['EMA'].shift(5))
-        downtrend = (frame['close'] < frame['EMA']) & (frame['EMA'] < frame['EMA'].shift(5))
+        # Оставляем твои проверенные фильтры с 60% винрейтом
+        is_tradeable_regime = (frame['ADX'] < 35) | (frame['ADX'] < frame['ADX'].shift(1))
 
-        # 2. Касание/прокол границы канала на прошлой свече и возврат внутрь канала на текущей
-        touch_lower = (frame['low'].shift(1) <= frame[self.bbl_col].shift(1)) & (frame['close'] > frame[self.bbl_col])
-        touch_upper = (frame['high'].shift(1) >= frame[self.bbu_col].shift(1)) & (frame['close'] < frame[self.bbu_col])
+        lower_breaches = (frame['close'] < frame[self.bbl_col]).rolling(8).sum()
+        upper_breaches = (frame['close'] > frame[self.bbu_col]).rolling(8).sum()
+        no_cascade_down = lower_breaches <= 1
+        no_cascade_up = upper_breaches <= 1
 
-        # 3. Разворот импульса по MACD
-        macd_up = frame['macd_hist'] > frame['macd_hist_sh1']
-        macd_down = frame['macd_hist'] < frame['macd_hist_sh1']
+        touch_lower = (
+            (frame['low'].shift(1) <= frame[self.bbl_col].shift(1)) &
+            (frame['close'] > frame[self.bbl_col]) &
+            (frame['close'] > frame['open'])
+        )
+        touch_upper = (
+            (frame['high'].shift(1) >= frame[self.bbu_col].shift(1)) &
+            (frame['close'] < frame[self.bbu_col]) &
+            (frame['close'] < frame['open'])
+        )
 
-        # 4. Фильтр минимального потенциала сделки (защита от комиссий):
-        # Расстояние от текущей цены до противоположной границы канала должно быть минимум 1.5 * ATR
-        min_profit_room_buy = (frame[self.bbu_col] - frame['close']) >= (frame['ATR'] * 1.5)
-        min_profit_room_sell = (frame['close'] - frame[self.bbl_col]) >= (frame['ATR'] * 1.5)
+        momentum_up = (frame['macd_hist'] > frame['macd_hist_sh1']) & (frame['RSI'] > frame['RSI'].shift(1))
+        momentum_down = (frame['macd_hist'] < frame['macd_hist_sh1']) & (frame['RSI'] < frame['RSI'].shift(1))
 
-        # 5. Немного строже фильтр RSI (отсекаем слабые отскоки)
+        min_profit_room_buy = (frame[self.bbm_col] - frame['close']) >= (frame['ATR'] * 1.3)
+        min_profit_room_sell = (frame['close'] - frame[self.bbm_col]) >= (frame['ATR'] * 1.3)
+
         buy_cond = (
             touch_lower &
-            (frame['RSI'] < (self.rsi_open - 3)) &
-            macd_up &
-            (is_flat | uptrend) &
+            (frame['RSI'] < self.rsi_open) &
+            momentum_up &
+            is_tradeable_regime &
+            no_cascade_down &
             min_profit_room_buy
         )
         sell_cond = (
             touch_upper &
-            (frame['RSI'] > (self.rsi_sell + 3)) &
-            macd_down &
-            (is_flat | downtrend) &
+            (frame['RSI'] > self.rsi_sell) &
+            momentum_down &
+            is_tradeable_regime &
+            no_cascade_up &
             min_profit_room_sell
         )
+
+        swing_low = np.minimum(frame['low'], frame['low'].shift(1)).fillna(frame['low'])
+        swing_high = np.maximum(frame['high'], frame['high'].shift(1)).fillna(frame['high'])
+
+        frame['calc_buy_sl'] = np.clip(
+            swing_low - (frame['ATR'] * 0.4),
+            frame['close'] - (frame['ATR'] * 1.5),
+            frame['close'] - (frame['ATR'] * 1.2)
+        )
+        frame['calc_sell_sl'] = np.clip(
+            swing_high + (frame['ATR'] * 0.4),
+            frame['close'] + (frame['ATR'] * 1.2),
+            frame['close'] + (frame['ATR'] * 1.5)
+        )
+
+        # Ставим дальний тейк-профит (4.5 * ATR), чтобы не резать сильные импульсы,
+        # а всю прибыль забирать через трейлинг-стоп движка
+        frame['calc_buy_tp'] = frame['close'] + (frame['ATR'] * 4.5)
+        frame['calc_sell_tp'] = frame['close'] - (frame['ATR'] * 4.5)
 
         frame['signal'] = np.select([buy_cond, sell_cond], ["Open_buy", "Open_sell"], default="NaN")
         return frame
 
-
     def close_strategy(self, frame: pd.DataFrame) -> pd.DataFrame:
-        # Отдаём закрытие динамическому TP (BBU/BBL) и Trailing Stop,
-        # чтобы не резать прибыль на средней линии BBM
+        # Не закрываем сделку на BBM — даем прибыли расти по трейлинг-стопу!
         frame['close_signal'] = "NaN"
         return frame
 
-    def sltp_startegy(self, frame: pd.DataFrame, atr_mult: float = 2.5):
+    def sltp_startegy(self, frame: pd.DataFrame, atr_mult: float = 1.8):
         super().sltp_startegy(frame)
         if frame.empty:
             return
+
         df = frame.iloc[-1]
         try:
             close_p = float(df['close'])
             atr = float(df['ATR'])
-            self.buy_sl = close_p - (atr * atr_mult)
-            self.buy_tp = float(df[self.bbu_col])
 
-            self.sell_sl = close_p + (atr * atr_mult)
-            self.sell_tp = float(df[self.bbl_col])
+            self.buy_sl = float(df.get('calc_buy_sl', close_p - atr * atr_mult))
+            self.buy_tp = float(df.get('calc_buy_tp', df[self.bbu_col]))
+
+            self.sell_sl = float(df.get('calc_sell_sl', close_p + atr * atr_mult))
+            self.sell_tp = float(df.get('calc_sell_tp', df[self.bbl_col]))
 
             signal = df.get('signal', "NaN")
             self.stop_loss = self.sell_sl if signal == "Open_sell" else self.buy_sl
