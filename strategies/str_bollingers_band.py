@@ -14,7 +14,14 @@ logger = app_logger.get_logger(__name__)
 
 
 class Strategy_BB(Strategy):
-    def __init__(self, period: int, rsi_open: float, adx_open: float, open_triger: str = 'close', close_triger: str = 'close'):
+    def __init__(
+        self,
+        period: int,
+        rsi_open: float,
+        adx_open: float,
+        open_triger: str = 'close',
+        close_triger: str = 'close'
+    ):
         super().__init__(period)
         self.period = period
         self.rsi_open = rsi_open
@@ -33,18 +40,31 @@ class Strategy_BB(Strategy):
             MACD('MACD', 12, 8, 21, 5),
             ADX('ADX', 16),
             ATR("ATR", 14),
-            MA("EMA", 50, "ema")
+            MA("EMA", 50, "ema"),
+            MA("EMA_LONG", 200, "ema")
         ]
 
     def open_strategy(self, frame: pd.DataFrame) -> pd.DataFrame:
-        # Оставляем твои проверенные фильтры с 60% винрейтом
-        is_tradeable_regime = (frame['ADX'] < 35) | (frame['ADX'] < frame['ADX'].shift(1))
+        # Определяем имя колонки длинной EMA (подстраховка, если класс MA называет её 'EMA_200')
+        long_ema_col = 'EMA_LONG' if 'EMA_LONG' in frame.columns else 'EMA_200'
+
+        # 1. Глобальный тренд-фильтр (отключает лонги на обвалах вроде MGNT/VKCO/FLOT):
+        if long_ema_col in frame.columns:
+            allow_long_regime = (frame['EMA'] >= frame[long_ema_col]) | (frame['close'] > frame[long_ema_col])
+            allow_short_regime = (frame['EMA'] <= frame[long_ema_col]) | (frame['close'] < frame[long_ema_col])
+        else:
+            allow_long_regime = frame['EMA'] >= frame['EMA'].shift(30)
+            allow_short_regime = frame['EMA'] <= frame['EMA'].shift(30)
+
+        # 2. Локальный режим рынка и защита от каскадных пробоев
+        is_tradeable_adx = (frame['ADX'] < 35) | (frame['ADX'] < frame['ADX'].shift(1))
 
         lower_breaches = (frame['close'] < frame[self.bbl_col]).rolling(8).sum()
         upper_breaches = (frame['close'] > frame[self.bbu_col]).rolling(8).sum()
         no_cascade_down = lower_breaches <= 1
         no_cascade_up = upper_breaches <= 1
 
+        # 3. Прокол границы канала на прошлой свече и подтвержденный возврат внутрь на текущей
         touch_lower = (
             (frame['low'].shift(1) <= frame[self.bbl_col].shift(1)) &
             (frame['close'] > frame[self.bbl_col]) &
@@ -56,25 +76,29 @@ class Strategy_BB(Strategy):
             (frame['close'] < frame['open'])
         )
 
+        # 4. Разворот импульса по MACD и RSI
         momentum_up = (frame['macd_hist'] > frame['macd_hist_sh1']) & (frame['RSI'] > frame['RSI'].shift(1))
         momentum_down = (frame['macd_hist'] < frame['macd_hist_sh1']) & (frame['RSI'] < frame['RSI'].shift(1))
 
+        # 5. Запас хода до средней линии BBM минимум 1.3 * ATR
         min_profit_room_buy = (frame[self.bbm_col] - frame['close']) >= (frame['ATR'] * 1.3)
         min_profit_room_sell = (frame['close'] - frame[self.bbm_col]) >= (frame['ATR'] * 1.3)
 
         buy_cond = (
+            allow_long_regime &
             touch_lower &
             (frame['RSI'] < self.rsi_open) &
             momentum_up &
-            is_tradeable_regime &
+            is_tradeable_adx &
             no_cascade_down &
             min_profit_room_buy
         )
         sell_cond = (
+            allow_short_regime &
             touch_upper &
             (frame['RSI'] > self.rsi_sell) &
             momentum_down &
-            is_tradeable_regime &
+            is_tradeable_adx &
             no_cascade_up &
             min_profit_room_sell
         )
@@ -93,13 +117,13 @@ class Strategy_BB(Strategy):
             frame['close'] + (frame['ATR'] * 1.5)
         )
 
-        # Ставим дальний тейк-профит (4.5 * ATR), чтобы не резать сильные импульсы,
-        # а всю прибыль забирать через трейлинг-стоп движка
         frame['calc_buy_tp'] = frame['close'] + (frame['ATR'] * 4.5)
         frame['calc_sell_tp'] = frame['close'] - (frame['ATR'] * 4.5)
 
         frame['signal'] = np.select([buy_cond, sell_cond], ["Open_buy", "Open_sell"], default="NaN")
         return frame
+
+
 
     def close_strategy(self, frame: pd.DataFrame) -> pd.DataFrame:
         # Не закрываем сделку на BBM — даем прибыли расти по трейлинг-стопу!

@@ -543,12 +543,23 @@ class BacktraderExecutionBridge(bt.Strategy):
             if self.is_position_open:
                 dist = self._get_trailing_distance()
                 if dist > 0 and self.stop_loss is not None:
-                    # Если цена прошла в нашу сторону больше 1.2 * дистанции — сначала гарантируем безубыток с учетом комиссии
+                    atr_val = dist / float(self.p.atr_trailing_mult) if float(self.p.atr_trailing_mult) > 0 else dist
+                    # Порог безубытка 1.8 * ATR — цена уже прошла середину канала и не выбьется ретестом
+                    breakeven_trigger = atr_val * 1.8
                     breakeven_buffer = self.open_price_exec * (self.p.commission_pct / 100.0) * 1.5
-                    if self.is_buy and close_price >= self.open_price_exec + (dist * 0.8):
-                        self.stop_loss = max(self.stop_loss, self.open_price_exec + breakeven_buffer, close_price - dist)
-                    elif not self.is_buy and close_price <= self.open_price_exec - (dist * 0.8):
-                        self.stop_loss = min(self.stop_loss, self.open_price_exec - breakeven_buffer, close_price + dist)
+
+                    if self.is_buy:
+                        if close_price >= self.open_price_exec + breakeven_trigger:
+                            self.stop_loss = max(self.stop_loss, self.open_price_exec + breakeven_buffer)
+                        if close_price > self.open_price_exec:
+                            self.stop_loss = max(self.stop_loss, close_price - dist)
+                    else:
+                        if close_price <= self.open_price_exec - breakeven_trigger:
+                            self.stop_loss = min(self.stop_loss, self.open_price_exec - breakeven_buffer)
+                        if close_price < self.open_price_exec:
+                            self.stop_loss = min(self.stop_loss, close_price + dist)
+
+
 
             if self.p.dynamic_tp_enabled and self.p.user_strategy:
                 current_row_df = self.p.raw_dataframe.iloc[self.current_step: self.current_step + 1]

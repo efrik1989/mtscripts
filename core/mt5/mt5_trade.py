@@ -450,128 +450,151 @@ class Trade(trade.Trade):
             isOpen = False
         return isOpen
 
-    def check_and_update_trailing(self, symbol, trailing_points, min_profit_points):
+    def check_and_update_trailing(
+        self,
+        symbol: str,
+        trailing_points: float,
+        min_profit_points: float,
+        breakeven_trigger_pts: float = None,
+        commission_pct: float = 0.0657
+    ):
         """
-        Проверяет все открытые позиции по символу и обновляет Stop Loss.
-        trailing_points: дистанция трейлинга от текущей цены (в пунктах).
-        min_profit_points: минимальная прибыль в пунктах для активации трейлинга.
+        Обновляет Stop Loss с учетом ступени безубытка (1.8 * ATR) и скользящего трейлинга.
         """
-        # Получаем информацию о свойствах символа (размер пункта)
         symbol_info = Mt5.symbol_info(symbol)
         if symbol_info is None:
-            return
-        
-        point = symbol_info.point
-        
-        # Получаем текущие открытые позиции по инструменту
-        positions = Mt5.positions_get(symbol=symbol)
-        if positions is None or len(positions) == 0:
-            logger.info(f"There are no open positions on {symbol}, positions: {len(positions)}")
+            logger.warning(f"{symbol}: Не удалось получить symbol_info из MT5.")
             return
 
+        point = symbol_info.point
+        digits = symbol_info.digits
+        # Минимально разрешенный брокером отступ от текущей цены для установки SL/TP
+        min_stop_dist = symbol_info.trade_stops_level * point
+
+        positions = Mt5.positions_get(symbol=symbol)
+        if not positions:
+            return
+
+        tick = Mt5.symbol_info_tick(symbol)
+        if tick is None or tick.bid <= 0 or tick.ask <= 0:
+            logger.warning(f"{symbol}: Некорректный тик (bid/ask = 0), пропускаем обновление трала.")
+            return
 
         for pos in positions:
             pos_id = pos.ticket
             pos_type = pos.type
             open_price = pos.price_open
             current_sl = pos.sl
-            logger.info(f"{symbol}: ID: {pos_id}, position type: {pos_type}, open price: {open_price}, current sl: {current_sl}")
-            # Получаем актуальные цены Ask и Bid
-            tick = Mt5.symbol_info_tick(symbol)
-            if tick is None:
-                continue
-            # тут есть сомнения. Стоит ли это использовать.
-            current_bid = tick.bid
-            current_ask = tick.ask
 
-            # Логика для BUY позиций
+            # Буфер безубытка для покрытия двойной комиссии (вход + выход)
+            be_buffer = open_price * (commission_pct / 100.0) * 1.5
+
             if pos_type == Mt5.POSITION_TYPE_BUY:
-                # Текущая прибыль в пунктах
+                current_bid = tick.bid
                 profit_points = (current_bid - open_price) / point
-                
-                if profit_points >= min_profit_points:
-                    # Рассчитываем новый уровень Stop Loss
-                    new_sl = round(current_bid - (trailing_points * point), symbol_info.digits)
-                    
-                    # Сдвигаем SL только если он выше старого (или старого SL нет)
-                    if current_sl == 0 or new_sl > current_sl:
-                        self.modify_position_sl(pos_id, new_sl, pos.tp)
+                target_sl = current_sl
 
-            # Логика для SELL позиций
+                # 1. Ступень безубытка (как в эталонном бэктесте: при прохождении 1.8 * ATR)
+                if breakeven_trigger_pts and profit_points >= breakeven_trigger_pts:
+                    be_sl = round(open_price + be_buffer, digits)
+                    if target_sl == 0 or be_sl > target_sl:
+                        target_sl = be_sl
+
+                # 2. Основной скользящий трейлинг-стоп
+                if profit_points >= min_profit_points:
+                    trail_sl = round(current_bid - (trailing_points * point), digits)
+                    if target_sl == 0 or trail_sl > target_sl:
+                        target_sl = trail_sl
+
+                # Проверяем, что новый SL выше текущего, ниже текущей цены Bid и соблюдает stops_level брокера
+                if target_sl > 0 and (current_sl == 0 or target_sl > current_sl + point):
+                    if (current_bid - target_sl) >= max(min_stop_dist, point):
+                        self.modify_position_sl(pos_id, target_sl, pos.tp)
+
             elif pos_type == Mt5.POSITION_TYPE_SELL:
-                # Текущая прибыль в пунктах
+                current_ask = tick.ask
                 profit_points = (open_price - current_ask) / point
-                
+                target_sl = current_sl
+
+                # 1. Ступень безубытка для шорта
+                if breakeven_trigger_pts and profit_points >= breakeven_trigger_pts:
+                    be_sl = round(open_price - be_buffer, digits)
+                    if target_sl == 0 or be_sl < target_sl:
+                        target_sl = be_sl
+
+                # 2. Основной скользящий трейлинг-стоп для шорта
                 if profit_points >= min_profit_points:
-                    # Рассчитываем новый уровень Stop Loss
-                    new_sl = round(current_ask + (trailing_points * point), symbol_info.digits)
-                    
-                    # Сдвигаем SL только если он ниже старого (или старого SL нет)
-                    if current_sl == 0 or new_sl < current_sl:
-                        self.modify_position_sl(pos_id, new_sl, pos.tp)
+                    trail_sl = round(current_ask + (trailing_points * point), digits)
+                    if target_sl == 0 or trail_sl < target_sl:
+                        target_sl = trail_sl
 
-        positions = Mt5.positions_get(symbol=symbol)
-        if positions is None or len(positions) == 0:
-            logger.info(f"There are no open positions on {symbol}, positions: {0 if positions is None else len(positions)}")
-            return
-        
-        for up_pos in positions:
-            logger.info(f"SL is updated. Current SL: {up_pos.sl}")
-        
+                # Проверяем, что новый SL ниже текущего, выше текущей цены Ask и соблюдает stops_level брокера
+                if target_sl > 0 and (current_sl == 0 or target_sl < current_sl - point):
+                    if (target_sl - current_ask) >= max(min_stop_dist, point):
+                        self.modify_position_sl(pos_id, target_sl, pos.tp)
 
-    def modify_position_sl(self, position_ticket, new_sl, tp):
-        """Отправляет запрос на модификацию Stop Loss позиции"""
+    def modify_position_sl(self, position_ticket: int, new_sl: float, tp: float):
+        """Безопасно обновляет Stop Loss, сохраняя текущий Take Profit."""
         request = {
             "action": Mt5.TRADE_ACTION_SLTP,
             "position": position_ticket,
-            "sl": new_sl,
-            "tp": tp
+            "sl": float(new_sl),
+            "tp": float(tp) if tp else 0.0,
         }
         result = Mt5.order_send(request)
-        if result.retcode != Mt5.TRADE_RETCODE_DONE:
-            logger.info(f"Ошибка модификации Трала для #{position_ticket}: {result.comment}")
-        else:
-            logger.info(f"Трейлинг-стоп активирован. Позиция #{position_ticket} новый SL: {new_sl}")
-
-
-    def change_take_profit(self, symbol, new_tp):
-
-        positions = Mt5.positions_get(symbol=symbol)
-        if positions is None or len(positions) == 0:
-            logger.info(f"There are no open positions on {symbol}, positions: {0 if positions is None else len(positions)}")
+        if result is None:
+            logger.error(f"#{position_ticket}: Mt5.order_send вернул None (ошибка соединения с терминалом).")
             return
 
-        is_needed_to_change = False
-        position = positions[0]
-        self.take_profit = position.tp
-        logger.info(f"текущий TP: {self.take_profit}")
-        if self.isBuy:
-            if (self.take_profit + self.atr) <=  new_tp:
-                self.take_profit = new_tp
-                is_needed_to_change = True
+        if result.retcode != Mt5.TRADE_RETCODE_DONE:
+            logger.warning(f"#{position_ticket}: Ошибка модификации SL={new_sl} (retcode={result.retcode}): {result.comment}")
         else:
-            if (self.take_profit + self.atr) >=  new_tp:
-                self.take_profit = new_tp
+            logger.info(f"#{position_ticket}: SL успешно обновлён до {new_sl} (TP={tp} сохранён).")
+
+    def change_take_profit(self, symbol: str, new_tp: float):
+        """Безопасно обновляет Take Profit, не затирая установленный Stop Loss."""
+        symbol_info = Mt5.symbol_info(symbol)
+        positions = Mt5.positions_get(symbol=symbol)
+        if not positions or symbol_info is None:
+            return
+
+        digits = symbol_info.digits
+        new_tp_rounded = round(float(new_tp), digits)
+        position = positions[0]
+        current_tp = position.tp
+        current_sl = position.sl  # Обязательно сохраняем текущий SL!
+        is_needed_to_change = False
+
+        if position.type == Mt5.POSITION_TYPE_BUY:
+            # Для покупки отодвигаем TP только вверх и минимум на 1 ATR
+            if current_tp == 0 or (current_tp + self.atr) <= new_tp_rounded:
+                is_needed_to_change = True
+        elif position.type == Mt5.POSITION_TYPE_SELL:
+            # Для продажи отодвигаем TP только вниз и минимум на 1 ATR
+            if current_tp == 0 or (current_tp - self.atr) >= new_tp_rounded:
                 is_needed_to_change = True
 
-        if is_needed_to_change:
-            request = {
-                "ticket": position.ticket,
-                "action": Mt5.TRADE_ACTION_SLTP,
-                "symbol": self.symbol,
-                "tp": self.take_profit,
-                "magic": 7777,
-                "comment": "dynamic TP, python",
-            }
-            result=mt5.order_send(request)
-            # request the result as a dictionary and display it element by element
-            result_dict=result._asdict()
-            if result.retcode != Mt5.TRADE_RETCODE_DONE:
-                logger.error("4. order_send failed, retcode={}".format(result.retcode))
-                logger.error(f"   result: {result_dict}")
-            else:
-                
-                logger.info("Value of Take Profit is changed. TP = " + str(result_dict.get('tp')))
+        if not is_needed_to_change:
+            return
+
+        request = {
+            "action": Mt5.TRADE_ACTION_SLTP,
+            "position": position.ticket,
+            "symbol": symbol,
+            "sl": float(current_sl),      # Защита от обнуления стоп-лосса!
+            "tp": float(new_tp_rounded),
+            "magic": 7777,
+            "comment": "dynamic TP, python",
+        }
+        result = Mt5.order_send(request)
+        if result is None:
+            logger.error(f"{symbol} #{position.ticket}: order_send вернул None при изменении TP.")
+            return
+
+        if result.retcode != Mt5.TRADE_RETCODE_DONE:
+            logger.error(f"{symbol} #{position.ticket}: Ошибка изменения TP (retcode={result.retcode}): {result.comment}")
         else:
-            logger.info(f"Value of Take Profit is not changed. No need to change. TP = {self.take_profit}, new TP value = {new_tp}")
+            self.take_profit = new_tp_rounded
+            logger.info(f"{symbol} #{position.ticket}: TP обновлён до {new_tp_rounded} (SL={current_sl} сохранён).")
+
 
