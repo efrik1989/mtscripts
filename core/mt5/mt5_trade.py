@@ -3,6 +3,7 @@ import MetaTrader5 as Mt5
 import mt5.mt5_actions
 from abstractEasyT import trade
 import core.app_logger as app_logger
+from position_math import PositionMath
 
 logger = app_logger.get_logger(__name__)
 
@@ -87,79 +88,48 @@ class Trade(trade.Trade):
         logger.info(f'{self.symbol}: Normalizing the price')
         return math.floor(float(self.points * round(price / self.points)) * 100) / 100
 
-    def open_buy(self) -> None:
-        """
-        This functions when called send a buy request to Metatrader5 with the parameters in the attributes.
+    def open_buy(self) -> bool:
+        tick = Mt5.symbol_info_tick(self.symbol)
+        if tick is None or tick.ask <= 0:
+            logger.warning(f"{self.symbol}: Не удалось получить цену Ask для покупки (возможно клиринг или сбой связи).")
+            return False
 
-        Returns:
-            It returns None, but if an error occurs when open a position it will break.
+        price = float(tick.ask)
+        sl_price = self.normalize(price - self.stop_loss) if self.stop_loss else 0.0
+        tp_price = self.normalize(price + self.take_profit) if self.take_profit else 0.0
 
-        Examples:
-
-            Try this on your demo account with fake money, a position will be opened.
-
-            >>> # All the code you need to execute the function:
-            >>> from metatrader5EasyT.initialization import Initialize
-            >>> from metatrader5EasyT.trade import Trade
-            >>> initialize = Initialize()
-            >>> initialize.initialize_platform()
-            True
-            2022-03-11 04:47:29,903 WARNING - initialize_platform - "Algotrading" not allowed! You cannot open position,
-            but you can retrieve data. If you want to open positions, please, go to Metatrader5 and press the button
-            "Algotrading."
-            >>> initialize.initialize_symbol('EURUSD')
-            >>> eurusd_trade = Trade(symbol='EURUSD', lot=1.0, stop_loss=1.0, take_profit=1.0)
-            >>> # When I try to open a position and the Algotrading is not allowed on Metatrader5 I got a warning.
-            >>> eurusd_trade.open_buy()
-            2022-03-11 04:48:37,068 ERROR - open_buy - Something went wrong: Position Not Found for symbol EURUSD!
-            Last Error: (1, 'Success')
-            >>> # But when I allow algotrading, I return None, you can see at Metatrader5 that a buy
-            position was opened.
-            >>> eurusd_trade.open_buy()
-            None
-            >>> # Just for curiosity, if you want to try to open a sell position with this buy opened you will close
-            >>> # the buy position
-            >>> eurusd_trade.open_sell()
-            None
-
-        """
-        price = Mt5.symbol_info_tick(self.symbol).ask
-
-        self.ticket = (Mt5.positions_get(symbol=self.symbol)[0].ticket if len(
-            Mt5.positions_get(symbol=self.symbol)) == 1 else 0)
-
-        logger.info(f'BUY Order sent: {self.symbol},'
-                              f' {self.lot} lot(s),'
-                              f' at {price},'
-                              f' stoploss:{self.normalize(price - self.stop_loss)},'
-                              f' takeprofit: {self.normalize(price + self.take_profit)}.')
+        logger.info(
+            f"BUY Order sent: {self.symbol}, {self.lot} lot(s), at {price}, "
+            f"stoploss: {sl_price}, takeprofit: {tp_price}."
+        )
 
         request = {
             "action": Mt5.TRADE_ACTION_DEAL,
             "symbol": self.symbol,
-            "volume": self.lot,
+            "volume": float(self.lot),
             "type": Mt5.ORDER_TYPE_BUY,
             "price": price,
-            "sl": self.normalize(price - self.stop_loss),
-            "tp": self.normalize(price + self.take_profit),
-            "deviation": 5,
-            "magic": 7777,
-            "comment": "easyT!",
+            "sl": sl_price,
+            "tp": tp_price,
+            "deviation": 10,
+            "magic": getattr(self, 'magic', 7777),
+            "comment": "python_bot",
             "type_time": Mt5.ORDER_TIME_GTC,
             "type_filling": Mt5.ORDER_FILLING_RETURN,
-            "position": (Mt5.positions_get(symbol=self.symbol)[0].ticket if len(
-                Mt5.positions_get(symbol=self.symbol)) == 1 else 0)
         }
 
         result = Mt5.order_send(request)
 
         if result is None or result.retcode != Mt5.TRADE_RETCODE_DONE:
-            logger.error(f'{self.symbol}: Something went wrong: Position Not Found for symbol {self.symbol}!'
-                                   f' Last Error: {Mt5.last_error()}')
+            retcode = result.retcode if result else "None"
+            comment = result.comment if result else Mt5.last_error()
+            logger.error(f"{self.symbol}: Ошибка открытия BUY (retcode={retcode}): {comment}")
+            return False
 
-        else:
-            logger.info(f'{self.symbol}: Change trade direction to BUY.')
-            self.trade_direction = 'buy'
+        logger.info(f"{self.symbol}: Позиция BUY успешно открыта (ticket={result.order}).")
+        self.trade_direction = 'buy'
+        return True
+
 
     def open_sell(self):
         """
@@ -234,93 +204,49 @@ class Trade(trade.Trade):
             logger.info(f'{self.symbol}: Change trade direction to SELL.')
             self.trade_direction = 'sell'
 
-    def position_open(self, buy: bool, sell: bool) -> str | None:
-        """
-        This function receives two bool variables, buy and sell, if one of this variable is true and the other is false,
-        it opens a position to the side that is true, if both variable is true or both variable is false, it does not
-        open a position.
+    def open_sell(self) -> bool:
+        tick = Mt5.symbol_info_tick(self.symbol)
+        if tick is None or tick.bid <= 0:
+            logger.warning(f"{self.symbol}: Не удалось получить цену Bid для продажи (возможно клиринг или сбой связи).")
+            return False
 
-        Args:
-            buy:
-                When buy is TRUE it receives a positive signal to open a position. When false, it is ignored.
+        price = float(tick.bid)
+        # Для продажи SL ставится ВЫШЕ цены входа, а TP — НИЖЕ цены входа
+        sl_price = self.normalize(price + self.stop_loss) if self.stop_loss else 0.0
+        tp_price = self.normalize(price - self.take_profit) if self.take_profit else 0.0
 
-            sell:
-                When sell is TRUE it receives a positive signal to open a position. When false, it is ignored.
+        logger.info(
+            f"SELL Order sent: {self.symbol}, {self.lot} lot(s), at {price}, "
+            f"stoploss: {sl_price}, takeprofit: {tp_price}."
+        )
 
-        Returns:
-            It opens the position.
+        request = {
+            "action": Mt5.TRADE_ACTION_DEAL,
+            "symbol": self.symbol,
+            "volume": float(self.lot),
+            "type": Mt5.ORDER_TYPE_SELL,
+            "price": price,
+            "sl": sl_price,
+            "tp": tp_price,
+            "deviation": 10,
+            "magic": getattr(self, 'magic', 7777),
+            "comment": "python_bot",
+            "type_time": Mt5.ORDER_TIME_GTC,
+            "type_filling": Mt5.ORDER_FILLING_RETURN,
+        }
 
-        Examples:
+        result = Mt5.order_send(request)
 
-            Try this on your demo account with fake money, a position will be opened.
+        if result is None or result.retcode != Mt5.TRADE_RETCODE_DONE:
+            retcode = result.retcode if result else "None"
+            comment = result.comment if result else Mt5.last_error()
+            logger.error(f"{self.symbol}: Ошибка открытия SELL (retcode={retcode}): {comment}")
+            return False
 
-            >>> # All the code you need to execute the function:
-            >>> from metatrader5EasyT.initialization import Initialize
-            >>> from metatrader5EasyT.trade import Trade
-            >>> initialize = Initialize()
-            >>> initialize.initialize_platform()
-            True
-            2022-03-11 04:47:29,903 WARNING - initialize_platform - "Algotrading" not allowed! You cannot open position,
-            but you can retrieve data. If you want to open positions, please, go to Metatrader5 and press the button
-            "Algotrading."
-            >>> initialize.initialize_symbol('EURUSD')
-            >>> eurusd_trade = Trade(symbol='EURUSD', lot=1.0, stop_loss=1.0, take_profit=1.0)
-            >>> # When I try to open a position and the Algotrading is not allowed on Metatrader5, return None'
-            >>> eurusd_trade.position_open(True, False)
-            None
-            >>> # I allowed Algotrading, but when I try again, I receive None again.
-            >>> eurusd_trade.position_open(True, False)
-            None
-            >>> # That behavior is happening because the attribute eurusd_trade._trade_allowed, is False as default.
-            >>> eurusd_trade._trade_allowed
-            False
-            >>> # This attribute will be handled in another project, that is why it exists.
-            >>> # Let assign to True and see what happens:
-            >>> eurusd_trade._trade_allowed = True
-            >>> eurusd_trade._trade_allowed
-            True
-            >>> # Let try to open a position.
-            >>> eurusd_trade.position_open(True, False)
-            'buy'
-            >>> # It worked, lets try to double the position calling it again
-            >>> eurusd_trade.position_open(True, False)
-            'buy'
-            >>> # The function returns 'buy', but another position was not opened, it returns the current trade
-            >>> # direction
-            >>> # I will call an opposite direction to see what happens:
-            >>> eurusd_trade.position_open(False, True)
-            'buy'
-            >>> # The function returns 'buy', the position was not closed by trying to open another one in the opposite
-            >>> # direction. No new position was opened, and it returns the current trade direction.
-            >>> # I will close this position with eurusd_trade.position_close(), you can check what it does in the
-            >>> # function documentation position_close()
-            >>> eurusd_trade.position_close()
-            None
-            >>> # To finish, let see what happens if both arguments are True
-            >>> eurusd_trade.position_open(True, True)
-            None
-            >>> # Nothing happens, but when both are False?
-            >>> eurusd_trade.position_open(False, False)
-            None
-            >>> # Nothing happens
+        logger.info(f"{self.symbol}: Позиция SELL успешно открыта (ticket={result.order}).")
+        self.trade_direction = 'sell'
+        return True
 
-        """
-        logger.info(f'{self.symbol}: Open position called. Buy is {str(buy)}, and sell is {str(sell)}. Trade allowed is '
-                              f'{self._trade_allowed}.')
-
-        self.position_check()
-        if self._trade_allowed and self.trade_direction is None:
-            if buy and not sell:
-                logger.info(f'{self.symbol}: BUY is true, SELL is false')
-                self.open_buy()
-                self.position_check()
-
-            if sell and not buy:
-                logger.info(f'{self.symbol}: BUY is false, SELL is true')
-                self.open_sell()
-                self.position_check()
-
-        return self.trade_direction
 
     def position_close(self) -> None:
         """
@@ -454,7 +380,6 @@ class Trade(trade.Trade):
         self,
         symbol: str,
         trailing_points: float,
-        min_profit_points: float,
         breakeven_trigger_pts: float = None,
         commission_pct: float = 0.0657
     ):
@@ -481,57 +406,29 @@ class Trade(trade.Trade):
             return
 
         for pos in positions:
-            pos_id = pos.ticket
-            pos_type = pos.type
-            open_price = pos.price_open
-            current_sl = pos.sl
+            is_buy = (pos.type == Mt5.POSITION_TYPE_BUY)
+            current_price = tick.bid if is_buy else tick.ask
 
-            # Буфер безубытка для покрытия двойной комиссии (вход + выход)
-            be_buffer = open_price * (commission_pct / 100.0) * 1.5
+            new_sl = PositionMath.calculate_trailing_sl(
+                is_buy=is_buy,
+                open_price=pos.price_open,
+                current_price=current_price,
+                current_sl=pos.sl,
+                be_trigger_dist=(breakeven_trigger_pts * point) if breakeven_trigger_pts else 0.0,
+                trail_dist=trailing_points * point,
+                commission_pct=commission_pct
+            )
 
-            if pos_type == Mt5.POSITION_TYPE_BUY:
-                current_bid = tick.bid
-                profit_points = (current_bid - open_price) / point
-                target_sl = current_sl
+            if new_sl is not None:
+                new_sl_rounded = round(new_sl, digits)
+                # Проверяем, что новый SL реально изменился минимум на 1 шаг цены и не нарушает stops_level брокера
+                price_diff_ok = (pos.sl == 0) or (abs(new_sl_rounded - pos.sl) >= point)
+                broker_dist_ok = (current_price - new_sl_rounded >= max(min_stop_dist, point)) if is_buy else (
+                    new_sl_rounded - current_price >= max(min_stop_dist, point)
+                )
 
-                # 1. Ступень безубытка (как в эталонном бэктесте: при прохождении 1.8 * ATR)
-                if breakeven_trigger_pts and profit_points >= breakeven_trigger_pts:
-                    be_sl = round(open_price + be_buffer, digits)
-                    if target_sl == 0 or be_sl > target_sl:
-                        target_sl = be_sl
-
-                # 2. Основной скользящий трейлинг-стоп
-                if profit_points >= min_profit_points:
-                    trail_sl = round(current_bid - (trailing_points * point), digits)
-                    if target_sl == 0 or trail_sl > target_sl:
-                        target_sl = trail_sl
-
-                # Проверяем, что новый SL выше текущего, ниже текущей цены Bid и соблюдает stops_level брокера
-                if target_sl > 0 and (current_sl == 0 or target_sl > current_sl + point):
-                    if (current_bid - target_sl) >= max(min_stop_dist, point):
-                        self.modify_position_sl(pos_id, target_sl, pos.tp)
-
-            elif pos_type == Mt5.POSITION_TYPE_SELL:
-                current_ask = tick.ask
-                profit_points = (open_price - current_ask) / point
-                target_sl = current_sl
-
-                # 1. Ступень безубытка для шорта
-                if breakeven_trigger_pts and profit_points >= breakeven_trigger_pts:
-                    be_sl = round(open_price - be_buffer, digits)
-                    if target_sl == 0 or be_sl < target_sl:
-                        target_sl = be_sl
-
-                # 2. Основной скользящий трейлинг-стоп для шорта
-                if profit_points >= min_profit_points:
-                    trail_sl = round(current_ask + (trailing_points * point), digits)
-                    if target_sl == 0 or trail_sl < target_sl:
-                        target_sl = trail_sl
-
-                # Проверяем, что новый SL ниже текущего, выше текущей цены Ask и соблюдает stops_level брокера
-                if target_sl > 0 and (current_sl == 0 or target_sl < current_sl - point):
-                    if (target_sl - current_ask) >= max(min_stop_dist, point):
-                        self.modify_position_sl(pos_id, target_sl, pos.tp)
+                if price_diff_ok and broker_dist_ok:
+                    self.modify_position_sl(pos.ticket, new_sl_rounded, pos.tp)
 
     def modify_position_sl(self, position_ticket: int, new_sl: float, tp: float):
         """Безопасно обновляет Stop Loss, сохраняя текущий Take Profit."""
@@ -551,50 +448,57 @@ class Trade(trade.Trade):
         else:
             logger.info(f"#{position_ticket}: SL успешно обновлён до {new_sl} (TP={tp} сохранён).")
 
-    def change_take_profit(self, symbol: str, new_tp: float):
-        """Безопасно обновляет Take Profit, не затирая установленный Stop Loss."""
+    def change_take_profit(self, symbol: str, proposed_tp: float, commission_pct: float = 0.0657):
+        """Безопасно обновляет Take Profit через единую математику PositionMath."""
         symbol_info = Mt5.symbol_info(symbol)
         positions = Mt5.positions_get(symbol=symbol)
-        if not positions or symbol_info is None:
+        tick = Mt5.symbol_info_tick(symbol)
+
+        if not positions or symbol_info is None or tick is None:
             return
 
-        digits = symbol_info.digits
-        new_tp_rounded = round(float(new_tp), digits)
         position = positions[0]
-        current_tp = position.tp
-        current_sl = position.sl  # Обязательно сохраняем текущий SL!
-        is_needed_to_change = False
+        is_buy = (position.type == Mt5.POSITION_TYPE_BUY)
+        current_price = tick.bid if is_buy else tick.ask
+        min_stop_dist = symbol_info.trade_stops_level * symbol_info.point
 
-        if position.type == Mt5.POSITION_TYPE_BUY:
-            # Для покупки отодвигаем TP только вверх и минимум на 1 ATR
-            if current_tp == 0 or (current_tp + self.atr) <= new_tp_rounded:
-                is_needed_to_change = True
-        elif position.type == Mt5.POSITION_TYPE_SELL:
-            # Для продажи отодвигаем TP только вниз и минимум на 1 ATR
-            if current_tp == 0 or (current_tp - self.atr) >= new_tp_rounded:
-                is_needed_to_change = True
+        new_tp = PositionMath.calculate_dynamic_tp(
+            is_buy=is_buy,
+            open_price=position.price_open,
+            current_tp=position.tp,
+            proposed_tp=proposed_tp,
+            min_step=self.atr * 0.5,
+            commission_pct=commission_pct
+        )
 
-        if not is_needed_to_change:
+        if new_tp is None:
+            return
+
+        new_tp_rounded = round(new_tp, symbol_info.digits)
+
+        # Проверяем минимальный отступ от текущей рыночной цены, требуемый брокером
+        dist_ok = (new_tp_rounded - current_price >= min_stop_dist) if is_buy else (
+            current_price - new_tp_rounded >= min_stop_dist
+        )
+        if not dist_ok:
             return
 
         request = {
             "action": Mt5.TRADE_ACTION_SLTP,
             "position": position.ticket,
             "symbol": symbol,
-            "sl": float(current_sl),      # Защита от обнуления стоп-лосса!
+            "sl": float(position.sl),
             "tp": float(new_tp_rounded),
-            "magic": 7777,
+            "magic": getattr(self, 'magic', 7777),
             "comment": "dynamic TP, python",
         }
         result = Mt5.order_send(request)
-        if result is None:
-            logger.error(f"{symbol} #{position.ticket}: order_send вернул None при изменении TP.")
-            return
-
-        if result.retcode != Mt5.TRADE_RETCODE_DONE:
-            logger.error(f"{symbol} #{position.ticket}: Ошибка изменения TP (retcode={result.retcode}): {result.comment}")
+        if result is None or result.retcode != Mt5.TRADE_RETCODE_DONE:
+            err = result.comment if result else Mt5.last_error()
+            logger.error(f"{symbol} #{position.ticket}: Ошибка обновления TP={new_tp_rounded}: {err}")
         else:
             self.take_profit = new_tp_rounded
-            logger.info(f"{symbol} #{position.ticket}: TP обновлён до {new_tp_rounded} (SL={current_sl} сохранён).")
+            logger.info(f"{symbol} #{position.ticket}: TP обновлён до {new_tp_rounded} (SL={position.sl} сохранён).")
+
 
 

@@ -15,6 +15,8 @@ from matplotlib.figure import Figure
 from matplotlib.backends.backend_agg import FigureCanvasAgg
 from openpyxl.drawing.image import Image as XLImage
 
+from position_math import PositionMath
+
 logger = app_logger.get_logger(__name__)
 
 
@@ -555,41 +557,45 @@ class BacktraderExecutionBridge(bt.Strategy):
             if self.is_position_open:
                 dist = self._get_trailing_distance()
                 if dist > 0 and self.stop_loss is not None:
-                    # Получаем текущую строку датафрейма для чтения предрассчитанных дистанций из стратегии
-                    row = None
-                    if self.p.raw_dataframe is not None and self.current_step < len(self.p.raw_dataframe):
-                        row = self.p.raw_dataframe.iloc[self.current_step]
+                    row = self.p.raw_dataframe.iloc[self.current_step] if (
+                        self.p.raw_dataframe is not None and self.current_step < len(self.p.raw_dataframe)
+                    ) else None
 
-                    # Берем дистанции из стратегии (если рассчитаны) или считаем через ATR как запасной вариант
                     atr_val = dist / float(self.p.atr_trailing_mult) if float(self.p.atr_trailing_mult) > 0 else dist
                     be_trigger = float(row['calc_be_dist']) if (row is not None and 'calc_be_dist' in row) else (atr_val * 1.8)
                     trail_dist = float(row['calc_trail_dist']) if (row is not None and 'calc_trail_dist' in row) else dist
 
-                    breakeven_buffer = self.open_price_exec * (self.p.commission_pct / 100.0) * 1.5
-
-                    if self.is_buy:
-                        if close_price >= self.open_price_exec + be_trigger:
-                            self.stop_loss = max(self.stop_loss, self.open_price_exec + breakeven_buffer)
-                        if close_price > self.open_price_exec:
-                            self.stop_loss = max(self.stop_loss, close_price - trail_dist)
-                    else:
-                        if close_price <= self.open_price_exec - be_trigger:
-                            self.stop_loss = min(self.stop_loss, self.open_price_exec - breakeven_buffer)
-                        if close_price < self.open_price_exec:
-                            self.stop_loss = min(self.stop_loss, close_price + trail_dist)
+                    # Единый расчёт для бэктеста и реала
+                    new_sl = PositionMath.calculate_trailing_sl(
+                        is_buy=self.is_buy,
+                        open_price=self.open_price_exec,
+                        current_price=close_price,
+                        current_sl=self.stop_loss,
+                        be_trigger_dist=be_trigger,
+                        trail_dist=trail_dist,
+                        commission_pct=self.p.commission_pct
+                    )
+                    if new_sl is not None:
+                        self.stop_loss = new_sl
 
 
 
             if self.p.dynamic_tp_enabled and self.p.user_strategy:
                 current_row_df = self.p.raw_dataframe.iloc[self.current_step: self.current_step + 1]
                 self.p.user_strategy.sltp_startegy(current_row_df)
-                _, new_tp = self._get_strategy_levels(self.is_buy)
+                _, proposed_tp = self._get_strategy_levels(self.is_buy)
+
+                atr_val = float(current_row_df['ATR'].iloc[0]) if 'ATR' in current_row_df.columns else 0.0
+                new_tp = PositionMath.calculate_dynamic_tp(
+                    is_buy=self.is_buy,
+                    open_price=self.open_price_exec,
+                    current_tp=self.take_profit,
+                    proposed_tp=proposed_tp,
+                    min_step=atr_val * 0.5,
+                    commission_pct=self.p.commission_pct
+                )
                 if new_tp is not None:
-                    # Защита: динамический TP не имеет права опускаться ниже цены входа (для Buy) или подниматься выше (для Sell)
-                    if self.is_buy and new_tp > self.open_price_exec:
-                        self.take_profit = new_tp
-                    elif not self.is_buy and new_tp < self.open_price_exec:
-                        self.take_profit = new_tp
+                    self.take_profit = new_tp
 
 
         # 3. Оценка сигналов по закрытию текущей свечи для входа на следующей
