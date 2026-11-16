@@ -29,6 +29,8 @@ class Strategy_BB(Strategy):
         self.adx_open = adx_open
         self.open_triger = open_triger
         self.close_triger = close_triger
+        self.atr_trailing_mult = 2.5
+        self.breakeven_atr_mult = 1.8
 
         self.bbu_col = f'BBU_{period}_2.0_2.0'
         self.bbm_col = f'BBM_{period}_2.0_2.0'
@@ -37,7 +39,7 @@ class Strategy_BB(Strategy):
         self.indicators = [
             Bollinger("BB", period),
             RSI("RSI", 11, True),
-            MACD('MACD', 12, 8, 21, 5),
+            MACD('MACD', 8, 21, 5),
             ADX('ADX', 16),
             ATR("ATR", 14),
             MA("EMA", 50, "ema"),
@@ -47,6 +49,8 @@ class Strategy_BB(Strategy):
     def open_strategy(self, frame: pd.DataFrame) -> pd.DataFrame:
         # Определяем имя колонки длинной EMA (подстраховка, если класс MA называет её 'EMA_200')
         long_ema_col = 'EMA_LONG' if 'EMA_LONG' in frame.columns else 'EMA_200'
+        frame['calc_be_dist'] = frame['ATR'] * self.breakeven_atr_mult
+        frame['calc_trail_dist'] = frame['ATR'] * self.atr_trailing_mult
 
         # 1. Глобальный тренд-фильтр (отключает лонги на обвалах вроде MGNT/VKCO/FLOT):
         if long_ema_col in frame.columns:

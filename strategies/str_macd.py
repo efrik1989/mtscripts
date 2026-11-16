@@ -15,7 +15,7 @@ logger=app_logger.get_logger(__name__)
 class Strategy_MACD(Strategy):
     def __init__(self, period):
                 super().__init__(period)
-                self.indicators = [MACD('MACD', 12, 12, 26, 9),  
+                self.indicators = [MACD('MACD', 26, 9, 5),  
                                    RSI("RSI", 14, True), 
                                     MA("EMA", 200, "ema")]
                 """self.rsi_open = rsi_open

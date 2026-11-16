@@ -103,6 +103,7 @@ class Historic_mode(Mode):
         data_signals = GenericMT5Data(dataname=df)
         self.cerebro.adddata(data_signals)
 
+   
     @override
     def lets_trade(self, symbol=None):
         target_symbol = symbol or self.symbol
@@ -114,11 +115,20 @@ class Historic_mode(Mode):
         except (KeyError, NameError):
             base_lot = 1
 
+        if self.strategy.atr_trailing_mult is None or self.strategy.breakeven_atr_mult is None:
+            raise ValueError(
+                f"В стратегии {type(self.strategy).__name__} не заданы atr_trailing_mult или breakeven_atr_mult!"
+            )
+
+        atr_mult = self.strategy.atr_trailing_mult
+        be_mult = self.strategy.breakeven_atr_mult
+
         self.cerebro.addstrategy(
             BacktraderExecutionBridge,
             buy_sell_allowed=bool(gv.global_args.buy_sell),
             trailing_stop=gv.global_args.trailing_stop,
-            atr_trailing_mult=2.5,
+            atr_trailing_mult=atr_mult,
+            breakeven_atr_mult=be_mult,
             dynamic_tp_enabled=bool(gv.global_args.dynamic_take_profit),
             user_strategy=self.strategy,
             raw_dataframe=self.frame,
@@ -135,6 +145,7 @@ class Historic_mode(Mode):
         last_bar = self.frame.iloc[-1]
         self.set_finish_resume(target_symbol, last_bar)
 
+
     def export_report_to_excel(self, symbol: str):
         """Потокобезопасно строит график и сохраняет Excel-отчёт с полным логированием."""
         try:
@@ -149,7 +160,7 @@ class Historic_mode(Mode):
             base_dir = os.getcwd()
             out_dir = os.path.join(base_dir, "logs", "frames")
             os.makedirs(out_dir, exist_ok=True)
-            excel_path = os.path.join(out_dir, f"chart_{symbol}.xlsx")
+            excel_path = os.path.join(out_dir, f"chart_{symbol}_{gv.global_args.timeframe}.xlsx")
 
             # Создаём 3 оси через subplots (без индексации gs)
             fig = Figure(figsize=(16, 11))
@@ -292,6 +303,7 @@ class BacktraderExecutionBridge(bt.Strategy):
         ('buy_sell_allowed', True),
         ('trailing_stop', None),     # Принимает "atr", число (650) или 0/None
         ('atr_trailing_mult', 1.5),  # Множитель для режима "atr"
+        ('breakeven_atr_mult', 1.8), # Множитель ATR для активации безубытка
         ('dynamic_tp_enabled', False),
         ('user_strategy', None),
         ('raw_dataframe', None),
@@ -543,21 +555,28 @@ class BacktraderExecutionBridge(bt.Strategy):
             if self.is_position_open:
                 dist = self._get_trailing_distance()
                 if dist > 0 and self.stop_loss is not None:
+                    # Получаем текущую строку датафрейма для чтения предрассчитанных дистанций из стратегии
+                    row = None
+                    if self.p.raw_dataframe is not None and self.current_step < len(self.p.raw_dataframe):
+                        row = self.p.raw_dataframe.iloc[self.current_step]
+
+                    # Берем дистанции из стратегии (если рассчитаны) или считаем через ATR как запасной вариант
                     atr_val = dist / float(self.p.atr_trailing_mult) if float(self.p.atr_trailing_mult) > 0 else dist
-                    # Порог безубытка 1.8 * ATR — цена уже прошла середину канала и не выбьется ретестом
-                    breakeven_trigger = atr_val * 1.8
+                    be_trigger = float(row['calc_be_dist']) if (row is not None and 'calc_be_dist' in row) else (atr_val * 1.8)
+                    trail_dist = float(row['calc_trail_dist']) if (row is not None and 'calc_trail_dist' in row) else dist
+
                     breakeven_buffer = self.open_price_exec * (self.p.commission_pct / 100.0) * 1.5
 
                     if self.is_buy:
-                        if close_price >= self.open_price_exec + breakeven_trigger:
+                        if close_price >= self.open_price_exec + be_trigger:
                             self.stop_loss = max(self.stop_loss, self.open_price_exec + breakeven_buffer)
                         if close_price > self.open_price_exec:
-                            self.stop_loss = max(self.stop_loss, close_price - dist)
+                            self.stop_loss = max(self.stop_loss, close_price - trail_dist)
                     else:
-                        if close_price <= self.open_price_exec - breakeven_trigger:
+                        if close_price <= self.open_price_exec - be_trigger:
                             self.stop_loss = min(self.stop_loss, self.open_price_exec - breakeven_buffer)
                         if close_price < self.open_price_exec:
-                            self.stop_loss = min(self.stop_loss, close_price + dist)
+                            self.stop_loss = min(self.stop_loss, close_price + trail_dist)
 
 
 

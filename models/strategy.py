@@ -1,4 +1,5 @@
-from abc import ABCMeta, abstractmethod, abstractproperty
+from abc import ABCMeta, abstractmethod
+from typing import Optional
 
 import pandas as pd
 import core.app_logger as app_logger
@@ -10,6 +11,8 @@ logger=app_logger.get_logger(__name__)
 class Strategy():
     __metaclass__=ABCMeta
     def __init__(self, period):
+        self.atr_trailing_mult: Optional[float] = None
+        self.breakeven_atr_mult: Optional[float] = None
         self.period = period
         self.indicators = []
         self.take_profit = None
