@@ -1,4 +1,5 @@
 import sys
+import copy
 import threading
 import core.args_parser as args_parser
 parser = args_parser.Args_parser()
@@ -57,7 +58,7 @@ def symbols_workers_start(producers):
         logger.debug("Symbols lenght: " + str(len(args.symbols)))
         for symbol in args.symbols:
             logger.info(str(symbol) + ": start()")
-            thread=threading.Thread(target=monney_mode_select, args=(symbol, Strategy[gv.global_args.strategy].value), daemon=True)
+            thread=threading.Thread(target=monney_mode_select, args=(symbol, copy.deepcopy(Strategy[gv.global_args.strategy].value)), daemon=True)
             thread.start()
             producers.append(thread)
     return producers
