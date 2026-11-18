@@ -1,4 +1,9 @@
 {
+"risk_settings": {
+    "max_open_positions": 4,
+    "risk_per_trade_pct": 1.5,
+    "max_deposit_share": 0.25
+  },
   "portfolio": [
     {
       "symbol": "MAGN",
