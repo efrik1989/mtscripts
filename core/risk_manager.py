@@ -3,6 +3,7 @@ import threading
 import time
 import MetaTrader5 as mt5
 import core.app_logger as app_logger
+from core.config_loader import RiskConfig
 
 logger = app_logger.get_logger(__name__)
 
@@ -21,23 +22,24 @@ class SingletonMeta(type):
 
 
 class RiskManager(metaclass=SingletonMeta):
+    BOT_MAGIC_NUMBER: int = 7777
+
     def __init__(
         self,
-        trade_risk=0.0,
-        lost_risk=0.0,
-        cache_ttl=0.2,
-        max_open_positions=3,
-        risk_per_trade_pct=1.5,
-        max_deposit_share=0.30,
-        magic_number=7777
+        trade_risk: float = 0.0,
+        lost_risk: float = 0.0,
+        cache_ttl: float = 0.2,
+        max_open_positions: int = 4,
+        risk_per_trade_pct: float = 1.5,
+        max_deposit_share: float = 0.25
     ):
         if not hasattr(self, "_initialized"):
             self.trade_risk = float(trade_risk)
             self.lost_risk = float(lost_risk)
-            self.max_open_positions = int(max_open_positions)
-            self.risk_per_trade_pct = float(risk_per_trade_pct)
-            self.max_deposit_share = float(max_deposit_share)
-            self.magic_number = int(magic_number)
+            self.max_open_positions: int = RiskConfig.max_open_positions
+            self.risk_per_trade_pct: float = RiskConfig.risk_per_trade_pct
+            self.max_deposit_share: float = RiskConfig.max_deposit_share
+            self.magic_number = self.BOT_MAGIC_NUMBER
 
             self.account_info_dict = {}
             self.equity = 0.0

@@ -1,0 +1,24 @@
+{
+  "portfolio": [
+    {
+      "symbol": "MAGN",
+      "strategy": "TREND_20_52_22_close_close",
+      "timeframe": "D1",
+      "buy_sell": false,
+      "trailing_stop": "atr",
+      "dynamic_take_profit": false,
+      "range": 300,
+      "enabled": true
+    },
+    {
+      "symbol": "MDMG",
+      "strategy": "BB_RSI_36_17_close_BBU",
+      "timeframe": "M15",
+      "buy_sell": false,
+      "trailing_stop": "atr",
+      "dynamic_take_profit": false,
+      "range": 500,
+      "enabled": true
+    }
+  ]
+}

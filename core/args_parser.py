@@ -9,6 +9,31 @@ class Args_parser():
 
     def args_parse(self):
         parser = argparse.ArgumentParser()
+
+                # Внутри Args_parser.args_parse():
+        parser.add_argument(
+            "-mp", "--max_positions",
+            type=int,
+            help="Maximum number of simultaneously open positions across portfolio. Default: 4.",
+            action="store",
+            default=4
+        )
+        parser.add_argument(
+            "-trp", "--trade_risk_pct",
+            type=float,
+            help="Risk percentage per single trade (to Stop Loss). Default: 1.5.",
+            action="store",
+            default=1.5
+        )
+        parser.add_argument(
+            "-ds", "--deposit_share",
+            type=float,
+            help="Maximum deposit share allocated to a single instrument (0.0 to 1.0). Default: 0.25.",
+            action="store",
+            default=0.25
+        )
+
+        parser.add_argument("-c", "--config", help="Path to JSON portfolio config file (Example: configs/portfolio_config.json)", action="store", default=None)
         # Символы по умолчанию: "LKOH", "TATN", "SBER", "MAGN", "VTBR", "NLMK", "CHMF", "X5", "MGNT", "YDEX", "OZON"
         parser.add_argument("-s", "--symbols", help="List of instrument symbols. Enter like a strings list(Example: 'LKOH' 'TATN')\n" \
         " Default: 'LKOH', 'TATN', 'SBER', 'MAGN', 'VTBR', 'NLMK', 'CHMF', 'X5', 'MGNT', 'YDEX', 'OZON'", nargs="+", action="store", default=["LKOH"] )
@@ -33,8 +58,8 @@ class Args_parser():
             " W 1 weak,\n" \
             " MN = 1 month", action="store", default="H4")
         parser.add_argument("-str", "--strategy", help="Strategy name. Available: BB_RSI, MA_50_RSI.", action="store", default="BB_RSI_45_18_close_BBM")
-        parser.add_argument("-a", "--account", help="Account number in Finam.", action="store_true", default=23677)
-        parser.add_argument("-p", "--password", help="Account password number in Finam.", action="store_true", default="3C$ap3%H")
+        parser.add_argument("-a", "--account", help="Account number in Finam.", action="store", default=23677)
+        parser.add_argument("-p", "--password", help="Account password number in Finam.", action="store", default="3C$ap3%H")
         parser.add_argument("-mm", "--monney_manager", help="Percentage of the total balance that will be involved in trading.", action="store", default=100)
         parser.add_argument("-lr", "--lost_risk", help="Percentage of total balance that is allowed to be lost.", action="store", default=100)
         parser.add_argument("-ts", "--trailing_stop", help="Price indent from Stop Loss.", action="store", default=0)
@@ -47,19 +72,11 @@ class Args_parser():
         args = parser.parse_args()
         args.logfile = args.logs_directory + "\\" + args.logfile
         gv.global_args = args
-        print("Выбраны иснтрументы:")
-        print(args.symbols)
-        print("Выбран таймфрэйм:")
-        print(args.timeframe)
-        print("Выбран период для предварительного анализа:")
-        print(args.range)
-        print("Выбран режим работы")
-        print(args.monney_mode)
-        print("Используется аккаунт")
-        print(args.account)
-        print(f"Уровень логирования: {gv.global_args.loglevel}")
-        print("Файл логов")
-        print(gv.global_args.logfile)
+
+        self.get_config_from_file(args)
+
+        self.greetings_outpupt(gv.global_args)
+    
         self.create_dirs_if_not_exist(args.logs_directory + "\\" + args.monney_mode)
         self.create_dirs_if_not_exist(args.logs_directory + "\\frames")
 
@@ -70,3 +87,35 @@ class Args_parser():
             os.makedirs(path, exist_ok=True)
         except OSError as e:
             print(f"Ошибка при создании директории '{path}': {e}")
+
+    def greetings_outpupt(self, args):
+
+        # 3. Если запущено с JSON-конфигом — перезаписываем сводные поля args актуальными данными из файла
+        if args.config:
+            args.symbols = [cfg.symbol for cfg in args.instrument_configs]
+            print(f"Файл конфигурации: {args.config}")
+            print("Загруженный портфель из JSON:")
+            for cfg in args.instrument_configs:
+                print(
+                    f"  - {cfg.symbol}: Strategy={cfg.strategy_name}, TF={cfg.timeframe}, "
+                    f"Range={cfg.bars_range}, BuySell={cfg.buy_sell}, TS={cfg.trailing_stop}, DTP={cfg.dynamic_take_profit}"
+                )
+        else:
+            print(f"Выбраны инструменты: {args.symbols}")
+            print(f"Выбран таймфрэйм: {args.timeframe}")
+            print(f"Выбранная стратегия: {args.strategy}")
+            print(f"Выбран период для предварительного анализа: {args.range}")
+
+        print(
+            f"Настройки риска: MaxPositions={args.risk_config.max_open_positions}, "
+            f"RiskPerTrade={args.risk_config.risk_per_trade_pct}%, DepositShare={args.risk_config.max_deposit_share}"
+        )
+
+    def get_config_from_file(seslf, args):
+        if args.config:
+            from core.config_loader import ConfigLoader
+            instrument_configs, risk_config = ConfigLoader.build_from_args(args)
+            
+            args.instrument_configs = instrument_configs
+            args.risk_config = risk_config
+        return args

@@ -10,8 +10,8 @@ logger = app_logger.get_logger(__name__)
 
 
 class Trade_mode(Mode):
-    def __init__(self, symbol, strategy):
-        super().__init__(symbol, strategy)
+    def __init__(self, symbol, strategy, config=None):
+        super().__init__(symbol, strategy, config=config)
 
     def open_position_signal_checker(self, symbol, current_price, signal, atr_value):
         super().open_position_signal_checker()
@@ -19,7 +19,7 @@ class Trade_mode(Mode):
             return
 
         is_buy_signal = (signal == "Open_buy")
-        is_sell_signal = (gv.global_args.buy_sell is True and signal == "Open_sell")
+        is_sell_signal = (self.buy_sell is True and signal == "Open_sell")
 
         if not (is_buy_signal or is_sell_signal):
             return
@@ -65,7 +65,7 @@ class Trade_mode(Mode):
     def close_position_signal_checker(self, symbol, close_signal):
         super().close_position_signal_checker()
         if isinstance(self.order, Order) and (
-            close_signal == "Close_buy" or (gv.global_args.buy_sell is True and close_signal == "Close_sell")
+            close_signal == "Close_buy" or (self.buy_sell is True and close_signal == "Close_sell")
         ):
             logger.info(f"{symbol}: Сигнал на закрытие позиции: {close_signal}")
             self.order.close_position()
@@ -73,14 +73,14 @@ class Trade_mode(Mode):
 
     def dynamic_tp_checker(self, new_tp):
         super().dynamic_tp_checker()
-        if isinstance(self.order, Order) and gv.global_args.dynamic_take_profit:
+        if isinstance(self.order, Order) and self.dynamic_take_profit:
             self.order.set_new_take_profit(new_tp)
             logger.info(f"Order to change TP: {self.order.id}, значение: {new_tp}")
 
     def trailing_stop_checker(self, current_price):
         super().trailing_stop_checker()
-        if self.order is not None and gv.global_args.trailing_stop != 0:
-            self.order.traling_stop(current_price, gv.global_args.trailing_stop)
+        if self.order is not None and self.trailing_stop != 0:
+            self.order.traling_stop(current_price, self.trailing_stop)
 
     def signals_handler(self, symbol, current_price, signal, atr_value, close_signal):
         super().signals_handler()

@@ -20,14 +20,23 @@ import core.risk_manager as risk_m
 # Абстрактный класс родитель для режимов запуска.
 class Mode():
     __metaclass__=ABCMeta
-    def __init__(self, symbol, strategy: Strategy ):
+    def __init__(self, symbol: str, strategy, config=None):
         self.symbol = symbol
-           
-        mt5_a.selectSymbol(self.symbol)
-        self.frame = mt5_a.get_rates_frame(self.symbol, 2, gv.global_args.range, gv.global_args.timeframe)
-        
-        self.tick_obj = tick.Tick(self.symbol)
         self.strategy = strategy
+        self.config = config
+
+        # Индивидуальные параметры потока (из JSON-конфига или глобальных аргументов)
+        self.timeframe = config.timeframe if config else gv.global_args.timeframe
+        self.bars_range = config.bars_range if config else gv.global_args.range
+        self.buy_sell = config.buy_sell if config else gv.global_args.buy_sell
+        self.trailing_stop = config.trailing_stop if config else gv.global_args.trailing_stop
+        self.dynamic_take_profit = config.dynamic_take_profit if config else gv.global_args.dynamic_take_profit
+        self.strategy_name = config.strategy_name if config else type(strategy).__name__
+
+        mt5_a.selectSymbol(self.symbol)
+        self.frame = mt5_a.get_rates_frame(self.symbol, 2, self.bars_range, self.timeframe)
+
+        self.tick_obj = tick.Tick(self.symbol)
         self.is_order_open = mt5_a.check_order(self.symbol)
         self.order = None
         self.locker = Locker()
@@ -36,10 +45,12 @@ class Mode():
         self.efficiency = 0
         self.orders_count = 0
         self.profit_orders_count = 0
-        #TODO: RiskManager не должен создаваться для каждого инструмента он единый должен быть...
-        self.risk_manager = risk_m.RiskManager(gv.global_args.monney_manager, gv.global_args.lost_risk)
+
+        # Получаем уже инициализированный единый Singleton RiskManager
+        self.risk_manager = risk_m.RiskManager()
 
         self.lets_trade(self.symbol)
+
 
     # Ограничитель в 5000 строк для DataFrame, для сбоерегания ресурсов
     def check_frame_len(self, frame: pd.DataFrame):
@@ -77,7 +88,7 @@ class Mode():
 
     def update_all_frame(self, symbol, frame, strategy, is_order_open, locker: Locker, order, index):
         """Метод обновления фрейма."""
-        last_bar_frame = mt5_a.get_last_bar(symbol, gv.global_args.timeframe, index)
+        last_bar_frame = mt5_a.get_last_bar(symbol, self.timeframe, index)
         if self.is_need_update_lst_bar(symbol, frame, last_bar_frame):
             frame = self.update_frame_startegy(symbol, frame, last_bar_frame, strategy)
             # TODO: До делать метод  а то получается он сейчас не делает ничего...
@@ -112,7 +123,6 @@ class Mode():
         try:    
                 frame = pd.concat([frame, last_bar_frame], ignore_index=True)
                 frame = strategy.update_values(symbol, frame, last_bar_frame)
-                # Для отладки frame.to_excel(gv.global_args.logs_directory + '\\frames\\out_' + str(symbol) + '.xlsx')
                 frame = strategy.update_strategy(frame)
                 strategy.sltp_startegy(frame)
                 return frame
@@ -149,8 +159,8 @@ class Mode():
         # convert time in seconds into the 'datetime' format
         df = pd.DataFrame(frame)
         df['time']=pd.to_datetime(df['time'], unit='s')
-        df.to_excel(f"{gv.global_args.logs_directory}\\frames\\out_{symbol}_{gv.global_args.strategy}_frame_signal_test.xlsx")
-        logger.info(f"{str(symbol)}: Frames update complete. Frame in: {gv.global_args.logs_directory}\\frames\\out_{symbol}_{gv.global_args.strategy}_frame_signal_test.xlsx to manual analis.")
+        df.to_excel(f"{gv.global_args.logs_directory}\\frames\\out_{symbol}_{self.config.strategy_name}_frame_signal_test.xlsx")
+        logger.info(f"{str(symbol)}: Frames update complete. Frame in: {gv.global_args.logs_directory}\\frames\\out_{symbol}_{self.config.strategy_name}_frame_signal_test.xlsx to manual analis.")
         
     def close_position_by_sltp(self, symbol, current_price):
         logger.info(str(symbol) + ": Signal to close position find: SLTP")

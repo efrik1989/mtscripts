@@ -29,9 +29,7 @@ class GenericMT5Data(bt.feeds.PandasData):
 
 
 class Historic_mode(Mode):
-    def __init__(self, symbol, strategy):
-        self.symbol = symbol
-        self.strategy = strategy
+    def __init__(self, symbol, strategy, config=None):
 
         self.cerebro = bt.Cerebro(preload=False)
         self.start_cash = 10000.0
@@ -51,7 +49,7 @@ class Historic_mode(Mode):
         self.sell_profit_count = 0
         self.trades_history = []
 
-        super().__init__(symbol, strategy)
+        super().__init__(symbol, strategy, config=config)
 
     def get_symbol_point(self, symbol):
         """Получает минимальный шаг цены (point) инструмента из MT5."""
@@ -127,11 +125,11 @@ class Historic_mode(Mode):
 
         self.cerebro.addstrategy(
             BacktraderExecutionBridge,
-            buy_sell_allowed=bool(gv.global_args.buy_sell),
-            trailing_stop=gv.global_args.trailing_stop,
+            buy_sell_allowed=bool(self.buy_sell),
+            trailing_stop=self.trailing_stop,
             atr_trailing_mult=atr_mult,
             breakeven_atr_mult=be_mult,
-            dynamic_tp_enabled=bool(gv.global_args.dynamic_take_profit),
+            dynamic_tp_enabled=bool(self.dynamic_take_profit),
             user_strategy=self.strategy,
             raw_dataframe=self.frame,
             historic_mode_instance=self,
@@ -162,7 +160,7 @@ class Historic_mode(Mode):
             base_dir = os.getcwd()
             out_dir = os.path.join(base_dir, "logs", "frames")
             os.makedirs(out_dir, exist_ok=True)
-            excel_path = os.path.join(out_dir, f"chart_{symbol}_{gv.global_args.timeframe}.xlsx")
+            excel_path = os.path.join(out_dir, f"chart_{symbol}_{self.timeframe}.xlsx")
 
             # Создаём 3 оси через subplots (без индексации gs)
             fig = Figure(figsize=(16, 11))
@@ -269,7 +267,7 @@ class Historic_mode(Mode):
 
         data = {
             'symbol': symbol,
-            'mode_buy_sell': gv.global_args.buy_sell,
+            'mode_buy_sell': self.buy_sell,
             'deals_count': self.orders_count,
             'buy_deals': self.buy_orders_count,
             'buy_efficiency': buy_eff,

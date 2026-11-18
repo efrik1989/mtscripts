@@ -1,64 +1,73 @@
 import sys
 import copy
+from datetime import datetime
 import threading
 import core.args_parser as args_parser
 parser = args_parser.Args_parser()
 args = parser.args_parse()
+import core.global_vars as gv
 
+from config_loader import ConfigLoader, InstrumentConfig
 from core.risk_manager import RiskManager
 risk_manager = RiskManager(args.monney_manager, args.lost_risk)
+
+instrument_configs, risk_cfg = ConfigLoader.build_from_args(args)
+
+risk_manager = RiskManager(
+    trade_risk=args.monney_manager,
+    lost_risk=args.lost_risk,
+    risk_config=risk_cfg
+)
 
 from core.mt5.mt5_actions import MT5_actions as mt5_a
 import core.app_logger as app_logger
 
 logger=app_logger.get_logger(__name__)
 
-
 import MetaTrader5 as mt5
 from models.strategy_enum import Strategy
 
 import core.queue_handler as queue
-import core.global_vars as gv
+
 import core.modes.simulation_mode as sm
 import core.modes.trade_mode as tm
 import core.modes.historic_mode as hm
+
+
 """
 Основная задача скрипта опрпделеять точки входа в сделку и выхода.
 На вход получаем минутный фрейм, будем подоватьт по строчно т.е. будут известны история этих данных и 
 чтобы принять решение об открытии позиции нужно подождать закрытия следующего бара.
 """
 
-# TODO: Priority: 2 [general] Обложить все юнит тестами
-# TODO: Priority: 3[general/sim/history] Должна быть возможность выставить SLTP не только в значении ATR.
-# TODO: Пока выносить параметры, что стоит указывать в аргументах при запуске, а не хардкодить.
-# TODO: Сделать возможность выставлять только SL или TP
-# Период для индикаторов
-
-
 # Функция определения режима
-def monney_mode_select(symbol, strategy):
+def monney_mode_select(config: InstrumentConfig):
+    """Запускает поток инструмента со своей стратегией и индивидуальным конфигом."""
+    strategy_instance = copy.deepcopy(Strategy[config.strategy_name].value)
+
     mm = gv.global_args.monney_mode
-    if mm == "simulation": return sm.Simulation_mode(symbol, strategy)
-    if mm == "trade": return tm.Trade_mode(symbol, strategy)
-    if mm == "historic": return hm.Historic_mode(symbol, strategy)
+    if mm == "simulation":
+        return sm.Simulation_mode(config.symbol, strategy_instance, config=config)
+    if mm == "trade":
+        return tm.Trade_mode(config.symbol, strategy_instance, config=config)
+    if mm == "historic":
+        return hm.Historic_mode(config.symbol, strategy_instance, config=config)
     return mm
 
 def historic_analis_writer(producers):
     for t in producers:
             t.join()
 
+    now = datetime.now()
     frame = queue.set_data_to_frame()
-    frame.to_excel(gv.global_args.logs_directory + "\\historic\\Analis_Result_" + str(gv.global_args.strategy) + "_" + \
-                       str(gv.global_args.timeframe) + "_Buy_Sell=" + str(gv.global_args.buy_sell) + \
-                        "_TrailingStop=" + str(gv.global_args.trailing_stop) + \
-                            "_dynamic_take_profit=" + str(gv.global_args.dynamic_take_profit) + ".xlsx")
+    frame.to_excel(f"{gv.global_args.logs_directory}\\historic\\Analis_Result_{now.strftime("%d-%m-%Y_%H_%M_%S")}.xlsx")
     
 def symbols_workers_start(producers):
-    if len(args.symbols) != 0:
-        logger.debug("Symbols lenght: " + str(len(args.symbols)))
-        for symbol in args.symbols:
-            logger.info(str(symbol) + ": start()")
-            thread=threading.Thread(target=monney_mode_select, args=(symbol, copy.deepcopy(Strategy[gv.global_args.strategy].value)), daemon=True)
+    if len(args.instrument_configs) != 0:
+        logger.debug("Instruments count: " + str(len(args.instrument_configs)))
+        for cfg in args.instrument_configs:
+            logger.info(f"{cfg.symbol}: start() -> Strategy={cfg.strategy_name}, "f"TF={cfg.timeframe}, Range={cfg.bars_range}")
+            thread = threading.Thread(target=monney_mode_select, args=(cfg,), daemon=True)
             thread.start()
             producers.append(thread)
     return producers
@@ -91,9 +100,6 @@ def startRobot():
     producers = []
     producers = symbols_workers_start(producers)
 
-    # TODO: Priority: 2 [general] Добавить "Уровень риска". Процент от общего счета который может использовать робот. 
-    # TODO: Priority: 1 [general] И предохранитель, если баланс опустил на n-% от максимального кидаем ошибку и останавливаемся.
-    # Или например нет больше денег на болансе и сделку совершить невозможно.
     if gv.global_args.monney_mode == "historic":
         historic_analis_writer(producers)
         print("The End")
