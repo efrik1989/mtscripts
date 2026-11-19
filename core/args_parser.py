@@ -111,11 +111,10 @@ class Args_parser():
             f"RiskPerTrade={args.risk_config.risk_per_trade_pct}%, DepositShare={args.risk_config.max_deposit_share}"
         )
 
-    def get_config_from_file(seslf, args):
-        if args.config:
-            from core.config_loader import ConfigLoader
-            instrument_configs, risk_config = ConfigLoader.build_from_args(args)
-            
-            args.instrument_configs = instrument_configs
-            args.risk_config = risk_config
+    def get_config_from_file(seslf, args):   
+        from core.config_loader import ConfigLoader
+        instrument_configs, risk_config = ConfigLoader.build_from_args(args)
+        
+        args.instrument_configs = instrument_configs
+        args.risk_config = risk_config
         return args

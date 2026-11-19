@@ -1,5 +1,5 @@
 {
-"risk_settings": {
+  "risk_settings": {
     "max_open_positions": 4,
     "risk_per_trade_pct": 1.5,
     "max_deposit_share": 0.25
@@ -12,7 +12,57 @@
       "buy_sell": false,
       "trailing_stop": "atr",
       "dynamic_take_profit": false,
-      "range": 300,
+      "range": 500,
+      "enabled": true
+    },
+    {
+      "symbol": "BSPB",
+      "strategy": "TREND_20_52_22_close_close",
+      "timeframe": "D1",
+      "buy_sell": false,
+      "trailing_stop": "atr",
+      "dynamic_take_profit": false,
+      "range": 500,
+      "enabled": true
+    },
+    {
+      "symbol": "LKOH",
+      "strategy": "TREND_20_52_22_close_close",
+      "timeframe": "D1",
+      "buy_sell": false,
+      "trailing_stop": "atr",
+      "dynamic_take_profit": false,
+      "range": 500,
+      "enabled": true
+    },
+    {
+      "symbol": "GMKN",
+      "strategy": "TREND_20_52_22_close_close",
+      "timeframe": "D1",
+      "buy_sell": false,
+      "trailing_stop": "atr",
+      "dynamic_take_profit": false,
+      "range": 500,
+      "enabled": true
+    },
+    {
+      "symbol": "SBER",
+      "strategy": "TREND_20_52_22_close_close",
+      "timeframe": "D1",
+      "buy_sell": false,
+      "trailing_stop": "atr",
+      "dynamic_take_profit": false,
+      "range": 500,
+      "enabled": true
+    },
+    {
+      "symbol": "NVTK",
+      "strategy": "TREND_20_52_22_close_close",
+      "timeframe": "D1",
+      "buy_sell": false,
+      "trailing_stop": "atr",
+      "dynamic_take_profit": false,
+      "range": 500,
       "enabled": true
     },
     {
@@ -20,6 +70,66 @@
       "strategy": "BB_RSI_36_17_close_BBU",
       "timeframe": "M15",
       "buy_sell": false,
+      "trailing_stop": "atr",
+      "dynamic_take_profit": false,
+      "range": 500,
+      "enabled": true
+    },
+    {
+      "symbol": "LENT",
+      "strategy": "BB_RSI_36_17_close_BBU",
+      "timeframe": "M15",
+      "buy_sell": false,
+      "trailing_stop": "atr",
+      "dynamic_take_profit": false,
+      "range": 500,
+      "enabled": true
+    },
+    {
+      "symbol": "GAZP",
+      "strategy": "BB_RSI_36_17_close_BBU",
+      "timeframe": "M15",
+      "buy_sell": false,
+      "trailing_stop": "atr",
+      "dynamic_take_profit": false,
+      "range": 500,
+      "enabled": true
+    },
+    {
+      "symbol": "MOEX",
+      "strategy": "BB_RSI_36_17_close_BBU",
+      "timeframe": "M15",
+      "buy_sell": false,
+      "trailing_stop": "atr",
+      "dynamic_take_profit": false,
+      "range": 500,
+      "enabled": true
+    },
+    {
+      "symbol": "HEAD",
+      "strategy": "BB_RSI_36_17_close_BBU",
+      "timeframe": "M15",
+      "buy_sell": false,
+      "trailing_stop": "atr",
+      "dynamic_take_profit": false,
+      "range": 500,
+      "enabled": true
+    },
+    {
+      "symbol": "TATN",
+      "strategy": "BB_RSI_36_17_close_BBU",
+      "timeframe": "M15",
+      "buy_sell": true,
+      "trailing_stop": "atr",
+      "dynamic_take_profit": false,
+      "range": 500,
+      "enabled": true
+    },
+    {
+      "symbol": "UPRO",
+      "strategy": "BB_RSI_36_17_close_BBU",
+      "timeframe": "M15",
+      "buy_sell": true,
       "trailing_stop": "atr",
       "dynamic_take_profit": false,
       "range": 500,

@@ -1,0 +1,587 @@
+{
+  "risk_settings": {
+    "max_open_positions": 4,
+    "risk_per_trade_pct": 1.5,
+    "max_deposit_share": 0.25
+  },
+  "portfolio": [
+    {
+      "symbol": "OZPH",
+      "strategy": "TREND_20_52_22_close_close",
+      "timeframe": "D1",
+      "buy_sell": false,
+      "trailing_stop": "atr",
+      "dynamic_take_profit": false,
+      "range": 300,
+      "enabled": true
+    },
+    {
+      "symbol": "UGLD",
+      "strategy": "TREND_20_52_22_close_close",
+      "timeframe": "D1",
+      "buy_sell": false,
+      "trailing_stop": "atr",
+      "dynamic_take_profit": false,
+      "range": 300,
+      "enabled": true
+    },
+    {
+      "symbol": "GEMC",
+      "strategy": "TREND_20_52_22_close_close",
+      "timeframe": "D1",
+      "buy_sell": false,
+      "trailing_stop": "atr",
+      "dynamic_take_profit": false,
+      "range": 300,
+      "enabled": true
+    },
+    {
+      "symbol": "RENI",
+      "strategy": "TREND_20_52_22_close_close",
+      "timeframe": "D1",
+      "buy_sell": false,
+      "trailing_stop": "atr",
+      "dynamic_take_profit": false,
+      "range": 300,
+      "enabled": true
+    },
+    {
+      "symbol": "X5",
+      "strategy": "TREND_20_52_22_close_close",
+      "timeframe": "D1",
+      "buy_sell": false,
+      "trailing_stop": "atr",
+      "dynamic_take_profit": false,
+      "range": 300,
+      "enabled": true
+    },
+    {
+      "symbol": "SVCB",
+      "strategy": "TREND_20_52_22_close_close",
+      "timeframe": "D1",
+      "buy_sell": false,
+      "trailing_stop": "atr",
+      "dynamic_take_profit": false,
+      "range": 300,
+      "enabled": true
+    },
+    {
+      "symbol": "FLOT",
+      "strategy": "TREND_20_52_22_close_close",
+      "timeframe": "D1",
+      "buy_sell": false,
+      "trailing_stop": "atr",
+      "dynamic_take_profit": false,
+      "range": 300,
+      "enabled": true
+    },
+    {
+      "symbol": "VKCO",
+      "strategy": "TREND_20_52_22_close_close",
+      "timeframe": "D1",
+      "buy_sell": false,
+      "trailing_stop": "atr",
+      "dynamic_take_profit": false,
+      "range": 300,
+      "enabled": true
+    },
+    {
+      "symbol": "EUTR",
+      "strategy": "TREND_20_52_22_close_close",
+      "timeframe": "D1",
+      "buy_sell": false,
+      "trailing_stop": "atr",
+      "dynamic_take_profit": false,
+      "range": 300,
+      "enabled": true
+    },
+    {
+      "symbol": "CBOM",
+      "strategy": "TREND_20_52_22_close_close",
+      "timeframe": "D1",
+      "buy_sell": false,
+      "trailing_stop": "atr",
+      "dynamic_take_profit": false,
+      "range": 300,
+      "enabled": true
+    },
+    {
+      "symbol": "GAZP",
+      "strategy": "TREND_20_52_22_close_close",
+      "timeframe": "D1",
+      "buy_sell": false,
+      "trailing_stop": "atr",
+      "dynamic_take_profit": false,
+      "range": 300,
+      "enabled": true
+    },
+    {
+      "symbol": "POSI",
+      "strategy": "TREND_20_52_22_close_close",
+      "timeframe": "D1",
+      "buy_sell": false,
+      "trailing_stop": "atr",
+      "dynamic_take_profit": false,
+      "range": 300,
+      "enabled": true
+    },
+    {
+      "symbol": "MTLR",
+      "strategy": "TREND_20_52_22_close_close",
+      "timeframe": "D1",
+      "buy_sell": false,
+      "trailing_stop": "atr",
+      "dynamic_take_profit": false,
+      "range": 300,
+      "enabled": true
+    },
+    {
+      "symbol": "SELG",
+      "strategy": "TREND_20_52_22_close_close",
+      "timeframe": "D1",
+      "buy_sell": false,
+      "trailing_stop": "atr",
+      "dynamic_take_profit": false,
+      "range": 300,
+      "enabled": true
+    },
+    {
+      "symbol": "LEAS",
+      "strategy": "TREND_20_52_22_close_close",
+      "timeframe": "D1",
+      "buy_sell": false,
+      "trailing_stop": "atr",
+      "dynamic_take_profit": false,
+      "range": 300,
+      "enabled": true
+    },
+    {
+      "symbol": "AQUA",
+      "strategy": "TREND_20_52_22_close_close",
+      "timeframe": "D1",
+      "buy_sell": false,
+      "trailing_stop": "atr",
+      "dynamic_take_profit": false,
+      "range": 300,
+      "enabled": true
+    },
+    {
+      "symbol": "UPRO",
+      "strategy": "TREND_20_52_22_close_close",
+      "timeframe": "D1",
+      "buy_sell": false,
+      "trailing_stop": "atr",
+      "dynamic_take_profit": false,
+      "range": 300,
+      "enabled": true
+    },
+    {
+      "symbol": "MOEX",
+      "strategy": "TREND_20_52_22_close_close",
+      "timeframe": "D1",
+      "buy_sell": false,
+      "trailing_stop": "atr",
+      "dynamic_take_profit": false,
+      "range": 300,
+      "enabled": true
+    },
+    {
+      "symbol": "ASTR",
+      "strategy": "TREND_20_52_22_close_close",
+      "timeframe": "D1",
+      "buy_sell": false,
+      "trailing_stop": "atr",
+      "dynamic_take_profit": false,
+      "range": 300,
+      "enabled": true
+    },
+    {
+      "symbol": "SFIN",
+      "strategy": "TREND_20_52_22_close_close",
+      "timeframe": "D1",
+      "buy_sell": false,
+      "trailing_stop": "atr",
+      "dynamic_take_profit": false,
+      "range": 300,
+      "enabled": true
+    },
+    {
+      "symbol": "HEAD",
+      "strategy": "TREND_20_52_22_close_close",
+      "timeframe": "D1",
+      "buy_sell": false,
+      "trailing_stop": "atr",
+      "dynamic_take_profit": false,
+      "range": 300,
+      "enabled": true
+    },
+    {
+      "symbol": "T",
+      "strategy": "TREND_20_52_22_close_close",
+      "timeframe": "D1",
+      "buy_sell": false,
+      "trailing_stop": "atr",
+      "dynamic_take_profit": false,
+      "range": 300,
+      "enabled": true
+    },
+    {
+      "symbol": "FEES",
+      "strategy": "TREND_20_52_22_close_close",
+      "timeframe": "D1",
+      "buy_sell": false,
+      "trailing_stop": "atr",
+      "dynamic_take_profit": false,
+      "range": 300,
+      "enabled": true
+    },
+    {
+      "symbol": "MDMG",
+      "strategy": "BB_RSI_36_17_close_BBU",
+      "timeframe": "M15",
+      "buy_sell": false,
+      "trailing_stop": "atr",
+      "dynamic_take_profit": false,
+      "range": 500,
+      "enabled": true
+    },
+    {
+      "symbol": "AFKS",
+      "strategy": "TREND_20_52_22_close_close",
+      "timeframe": "D1",
+      "buy_sell": false,
+      "trailing_stop": "atr",
+      "dynamic_take_profit": false,
+      "range": 300,
+      "enabled": true
+    },
+    {
+      "symbol": "MTSS",
+      "strategy": "TREND_20_52_22_close_close",
+      "timeframe": "D1",
+      "buy_sell": false,
+      "trailing_stop": "atr",
+      "dynamic_take_profit": false,
+      "range": 300,
+      "enabled": true
+    },
+    {
+      "symbol": "LENT",
+      "strategy": "TREND_20_52_22_close_close",
+      "timeframe": "D1",
+      "buy_sell": false,
+      "trailing_stop": "atr",
+      "dynamic_take_profit": false,
+      "range": 300,
+      "enabled": true
+    },
+    {
+      "symbol": "BSPB",
+      "strategy": "TREND_20_52_22_close_close",
+      "timeframe": "D1",
+      "buy_sell": false,
+      "trailing_stop": "atr",
+      "dynamic_take_profit": false,
+      "range": 300,
+      "enabled": true
+    },
+    {
+      "symbol": "TATN",
+      "strategy": "TREND_20_52_22_close_close",
+      "timeframe": "D1",
+      "buy_sell": false,
+      "trailing_stop": "atr",
+      "dynamic_take_profit": false,
+      "range": 300,
+      "enabled": true
+    },
+    {
+      "symbol": "PIKK",
+      "strategy": "TREND_20_52_22_close_close",
+      "timeframe": "D1",
+      "buy_sell": false,
+      "trailing_stop": "atr",
+      "dynamic_take_profit": false,
+      "range": 300,
+      "enabled": true
+    },
+    {
+      "symbol": "PHOR",
+      "strategy": "TREND_20_52_22_close_close",
+      "timeframe": "D1",
+      "buy_sell": false,
+      "trailing_stop": "atr",
+      "dynamic_take_profit": false,
+      "range": 300,
+      "enabled": true
+    },
+    {
+      "symbol": "RNFT",
+      "strategy": "TREND_20_52_22_close_close",
+      "timeframe": "D1",
+      "buy_sell": false,
+      "trailing_stop": "atr",
+      "dynamic_take_profit": false,
+      "range": 300,
+      "enabled": true
+    },
+    {
+      "symbol": "VSEH",
+      "strategy": "TREND_20_52_22_close_close",
+      "timeframe": "D1",
+      "buy_sell": false,
+      "trailing_stop": "atr",
+      "dynamic_take_profit": false,
+      "range": 300,
+      "enabled": true
+    },
+    {
+      "symbol": "MSNG",
+      "strategy": "TREND_20_52_22_close_close",
+      "timeframe": "D1",
+      "buy_sell": false,
+      "trailing_stop": "atr",
+      "dynamic_take_profit": false,
+      "range": 300,
+      "enabled": true
+    },
+    {
+      "symbol": "HYDR",
+      "strategy": "TREND_20_52_22_close_close",
+      "timeframe": "D1",
+      "buy_sell": false,
+      "trailing_stop": "atr",
+      "dynamic_take_profit": false,
+      "range": 300,
+      "enabled": true
+    },
+    {
+      "symbol": "SMLT",
+      "strategy": "TREND_20_52_22_close_close",
+      "timeframe": "D1",
+      "buy_sell": false,
+      "trailing_stop": "atr",
+      "dynamic_take_profit": false,
+      "range": 300,
+      "enabled": true
+    },
+    {
+      "symbol": "ENPG",
+      "strategy": "TREND_20_52_22_close_close",
+      "timeframe": "D1",
+      "buy_sell": false,
+      "trailing_stop": "atr",
+      "dynamic_take_profit": false,
+      "range": 300,
+      "enabled": true
+    },
+    {
+      "symbol": "NVTK",
+      "strategy": "TREND_20_52_22_close_close",
+      "timeframe": "D1",
+      "buy_sell": false,
+      "trailing_stop": "atr",
+      "dynamic_take_profit": false,
+      "range": 300,
+      "enabled": true
+    },
+    {
+      "symbol": "ALRS",
+      "strategy": "TREND_20_52_22_close_close",
+      "timeframe": "D1",
+      "buy_sell": false,
+      "trailing_stop": "atr",
+      "dynamic_take_profit": false,
+      "range": 300,
+      "enabled": true
+    },
+    {
+      "symbol": "AFLT",
+      "strategy": "TREND_20_52_22_close_close",
+      "timeframe": "D1",
+      "buy_sell": false,
+      "trailing_stop": "atr",
+      "dynamic_take_profit": false,
+      "range": 300,
+      "enabled": true
+    },
+    {
+      "symbol": "NLMK",
+      "strategy": "TREND_20_52_22_close_close",
+      "timeframe": "D1",
+      "buy_sell": false,
+      "trailing_stop": "atr",
+      "dynamic_take_profit": false,
+      "range": 300,
+      "enabled": true
+    },
+    {
+      "symbol": "LKOH",
+      "strategy": "TREND_20_52_22_close_close",
+      "timeframe": "D1",
+      "buy_sell": false,
+      "trailing_stop": "atr",
+      "dynamic_take_profit": false,
+      "range": 300,
+      "enabled": true
+    },
+    {
+      "symbol": "ROSN",
+      "strategy": "TREND_20_52_22_close_close",
+      "timeframe": "D1",
+      "buy_sell": false,
+      "trailing_stop": "atr",
+      "dynamic_take_profit": false,
+      "range": 300,
+      "enabled": true
+    },
+    {
+      "symbol": "PLZL",
+      "strategy": "TREND_20_52_22_close_close",
+      "timeframe": "D1",
+      "buy_sell": false,
+      "trailing_stop": "atr",
+      "dynamic_take_profit": false,
+      "range": 300,
+      "enabled": true
+    },
+    {
+      "symbol": "RUAL",
+      "strategy": "TREND_20_52_22_close_close",
+      "timeframe": "D1",
+      "buy_sell": false,
+      "trailing_stop": "atr",
+      "dynamic_take_profit": false,
+      "range": 300,
+      "enabled": true
+    },
+    {
+      "symbol": "GMKN",
+      "strategy": "TREND_20_52_22_close_close",
+      "timeframe": "D1",
+      "buy_sell": false,
+      "trailing_stop": "atr",
+      "dynamic_take_profit": false,
+      "range": 300,
+      "enabled": true
+    },
+    {
+      "symbol": "MGNT",
+      "strategy": "TREND_20_52_22_close_close",
+      "timeframe": "D1",
+      "buy_sell": false,
+      "trailing_stop": "atr",
+      "dynamic_take_profit": false,
+      "range": 300,
+      "enabled": true
+    },
+    {
+      "symbol": "LSRG",
+      "strategy": "TREND_20_52_22_close_close",
+      "timeframe": "D1",
+      "buy_sell": false,
+      "trailing_stop": "atr",
+      "dynamic_take_profit": false,
+      "range": 300,
+      "enabled": true
+    },
+    {
+      "symbol": "ELFV",
+      "strategy": "TREND_20_52_22_close_close",
+      "timeframe": "D1",
+      "buy_sell": false,
+      "trailing_stop": "atr",
+      "dynamic_take_profit": false,
+      "range": 300,
+      "enabled": true
+    },
+    {
+      "symbol": "IRAO",
+      "strategy": "TREND_20_52_22_close_close",
+      "timeframe": "D1",
+      "buy_sell": false,
+      "trailing_stop": "atr",
+      "dynamic_take_profit": false,
+      "range": 300,
+      "enabled": true
+    },
+    {
+      "symbol": "MAGN",
+      "strategy": "TREND_20_52_22_close_close",
+      "timeframe": "D1",
+      "buy_sell": false,
+      "trailing_stop": "atr",
+      "dynamic_take_profit": false,
+      "range": 300,
+      "enabled": true
+    },
+    {
+      "symbol": "VTBR",
+      "strategy": "TREND_20_52_22_close_close",
+      "timeframe": "D1",
+      "buy_sell": false,
+      "trailing_stop": "atr",
+      "dynamic_take_profit": false,
+      "range": 300,
+      "enabled": true
+    },
+    {
+      "symbol": "RTKM",
+      "strategy": "TREND_20_52_22_close_close",
+      "timeframe": "D1",
+      "buy_sell": false,
+      "trailing_stop": "atr",
+      "dynamic_take_profit": false,
+      "range": 300,
+      "enabled": true
+    },
+    {
+      "symbol": "CHMF",
+      "strategy": "TREND_20_52_22_close_close",
+      "timeframe": "D1",
+      "buy_sell": false,
+      "trailing_stop": "atr",
+      "dynamic_take_profit": false,
+      "range": 300,
+      "enabled": true
+    },
+    {
+      "symbol": "SBER",
+      "strategy": "TREND_20_52_22_close_close",
+      "timeframe": "D1",
+      "buy_sell": false,
+      "trailing_stop": "atr",
+      "dynamic_take_profit": false,
+      "range": 300,
+      "enabled": true
+    },
+    {
+      "symbol": "MVID",
+      "strategy": "TREND_20_52_22_close_close",
+      "timeframe": "D1",
+      "buy_sell": false,
+      "trailing_stop": "atr",
+      "dynamic_take_profit": false,
+      "range": 300,
+      "enabled": true
+    },
+    {
+      "symbol": "BELU",
+      "strategy": "TREND_20_52_22_close_close",
+      "timeframe": "D1",
+      "buy_sell": false,
+      "trailing_stop": "atr",
+      "dynamic_take_profit": false,
+      "range": 300,
+      "enabled": true
+    },
+    {
+      "symbol": "TGKA",
+      "strategy": "TREND_20_52_22_close_close",
+      "timeframe": "D1",
+      "buy_sell": false,
+      "trailing_stop": "atr",
+      "dynamic_take_profit": false,
+      "range": 300,
+      "enabled": true
+    }
