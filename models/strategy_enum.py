@@ -47,6 +47,7 @@ class Strategy(Enum):
     BB_RSI_36_17_close_BBU = BB(16, 36, 17, 'close', 'BBU')
     TREND_48_55_24_close_close = Trend(48, 55, 24, 'close', 'close')
     TREND_20_52_22_close_close = Trend(20, 52, 22, 'close', 'close')
+    TREND_20_52_20_close_close = Trend(20, 52, 20, 'close', 'close')
     INTRADAY_12_45_22 = Intraday(12, 45, 22, 'close', 'close')
     MA_50_RSI = MA_50(50)
     #MACD_RSI = MACD()
