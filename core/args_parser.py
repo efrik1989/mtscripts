@@ -1,5 +1,6 @@
 import argparse
 import os
+import sys
 import core.global_vars as gv
 
 class Args_parser():
@@ -70,6 +71,25 @@ class Args_parser():
                             "trade - real trade.\n" \
                             "historic - trade simulation," , action="store", default="simulation")
         args = parser.parse_args()
+
+        cli_flags_map = {
+            "symbols": ("-s", "--symbols"),
+            "range": ("-r", "--range"),
+            "timeframe": ("-t", "--timeframe"),
+            "strategy": ("-str", "--strategy"),
+            "trailing_stop": ("-ts", "--trailing_stop"),
+            "dynamic_take_profit": ("-dtp", "--dynamic_take_profit"),
+            "buy_sell": ("-bs", "--buy_sell"),
+            "max_positions": ("-mp", "--max_positions"),
+            "trade_risk_pct": ("-trp", "--trade_risk_pct"),
+            "deposit_share": ("-ds", "--deposit_share"),
+        }
+        raw_argv = set(sys.argv[1:])
+        args.explicit_cli = {
+            param_name for param_name, flags in cli_flags_map.items()
+            if any(f in raw_argv or any(arg.startswith(f + "=") for arg in raw_argv) for f in flags)
+        }
+
         args.logfile = args.logs_directory + "\\" + args.logfile
         gv.global_args = args
 
