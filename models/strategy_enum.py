@@ -3,6 +3,7 @@ from strategies.str_bollingers_band import Strategy_BB as BB
 from strategies.str_trend import Strategy_Trend as Trend
 from strategies.str_ma_50 import Strategy_MA_50 as MA_50
 from strategies.str_macd import Strategy_MACD as MACD
+from strategies.str_intraday import Strategy_Intraday as Intraday
 
 class Strategy(Enum):
     BB_RSI_45_18_close_BBM = BB(20, 45, 18, 'close', 'BBM')
@@ -46,5 +47,6 @@ class Strategy(Enum):
     BB_RSI_36_17_close_BBU = BB(16, 36, 17, 'close', 'BBU')
     TREND_48_55_24_close_close = Trend(48, 55, 24, 'close', 'close')
     TREND_20_52_22_close_close = Trend(20, 52, 22, 'close', 'close')
+    INTRADAY_12_45_22 = Intraday(12, 45, 22, 'close', 'close')
     MA_50_RSI = MA_50(50)
     #MACD_RSI = MACD()

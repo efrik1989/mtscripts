@@ -22,7 +22,7 @@ class Strategy_Trend(Strategy):
         close_triger: str = 'close'
     ):
         super().__init__(period)
-        self.atr_trailing_mult = 4.5
+        self.atr_trailing_mult = 5.5
         self.breakeven_atr_mult = 2.5
         self.period = period
         self.rsi_open = rsi_open

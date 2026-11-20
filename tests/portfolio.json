@@ -56,6 +56,56 @@
       "enabled": true
     },
     {
+      "symbol": "PIKK",
+      "strategy": "TREND_20_52_22_close_close",
+      "timeframe": "D1",
+      "buy_sell": false,
+      "trailing_stop": "atr",
+      "dynamic_take_profit": false,
+      "range": 500,
+      "enabled": true
+    },
+    {
+      "symbol": "MGNT",
+      "strategy": "TREND_20_52_22_close_close",
+      "timeframe": "D1",
+      "buy_sell": false,
+      "trailing_stop": "atr",
+      "dynamic_take_profit": false,
+      "range": 500,
+      "enabled": true
+    },
+    {
+      "symbol": "BELU",
+      "strategy": "TREND_20_52_22_close_close",
+      "timeframe": "D1",
+      "buy_sell": false,
+      "trailing_stop": "atr",
+      "dynamic_take_profit": false,
+      "range": 500,
+      "enabled": true
+    },
+    {
+      "symbol": "AFKS",
+      "strategy": "TREND_20_52_22_close_close",
+      "timeframe": "D1",
+      "buy_sell": false,
+      "trailing_stop": "atr",
+      "dynamic_take_profit": false,
+      "range": 500,
+      "enabled": true
+    },
+    {
+      "symbol": "X5",
+      "strategy": "TREND_20_52_22_close_close",
+      "timeframe": "D1",
+      "buy_sell": false,
+      "trailing_stop": "atr",
+      "dynamic_take_profit": false,
+      "range": 500,
+      "enabled": true
+    },
+    {
       "symbol": "NVTK",
       "strategy": "TREND_20_52_22_close_close",
       "timeframe": "D1",
